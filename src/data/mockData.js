@@ -1,3 +1,73 @@
+// Teams
+export const mockTeams = [
+    {
+        id: 'team-1', name: 'Engineering', initials: 'EN', color: '#667eea',
+        description: 'Core product engineering team responsible for building and maintaining the platform.',
+        department: 'Engineering',
+        members: ['user-1', 'user-3', 'user-4'],
+        createdAt: '2025-01-15T09:00:00.000Z',
+        settings: { sla: { critical: 4, high: 8, medium: 24, low: 72 }, workingHours: { start: '09:00', end: '18:00', timezone: 'America/New_York' }, assignmentStrategy: 'round-robin' },
+    },
+    {
+        id: 'team-2', name: 'Support', initials: 'SU', color: '#10b981',
+        description: 'Customer support team handling user inquiries and issue resolution.',
+        department: 'Customer Success',
+        members: ['user-2', 'user-5', 'user-6'],
+        createdAt: '2025-02-01T09:00:00.000Z',
+        settings: { sla: { critical: 2, high: 4, medium: 12, low: 48 }, workingHours: { start: '08:00', end: '20:00', timezone: 'America/New_York' }, assignmentStrategy: 'load-balanced' },
+    },
+    {
+        id: 'team-3', name: 'Sales', initials: 'SA', color: '#f59e0b',
+        description: 'Sales operations team managing deals and client relationships.',
+        department: 'Sales',
+        members: ['user-1', 'user-2'],
+        createdAt: '2025-03-10T09:00:00.000Z',
+        settings: { sla: { critical: 1, high: 4, medium: 8, low: 24 }, workingHours: { start: '09:00', end: '17:00', timezone: 'America/Chicago' }, assignmentStrategy: 'manual' },
+    },
+    {
+        id: 'team-4', name: 'Design', initials: 'DE', color: '#ec4899',
+        description: 'Product design team crafting user experiences and visual interfaces.',
+        department: 'Product',
+        members: ['user-2', 'user-4', 'user-6'],
+        createdAt: '2025-04-05T09:00:00.000Z',
+        settings: { sla: { critical: 8, high: 16, medium: 48, low: 120 }, workingHours: { start: '10:00', end: '19:00', timezone: 'America/Los_Angeles' }, assignmentStrategy: 'round-robin' },
+    },
+];
+
+// Roles & Permissions
+export const mockRoles = [
+    {
+        id: 'role-admin', name: 'Admin',
+        permissions: { manageTeam: true, manageMembers: true, manageRoles: true, manageSettings: true, viewAnalytics: true, createTickets: true, assignTickets: true, deleteTickets: true, exportData: true },
+    },
+    {
+        id: 'role-manager', name: 'Manager',
+        permissions: { manageTeam: false, manageMembers: true, manageRoles: false, manageSettings: true, viewAnalytics: true, createTickets: true, assignTickets: true, deleteTickets: true, exportData: true },
+    },
+    {
+        id: 'role-agent', name: 'Agent',
+        permissions: { manageTeam: false, manageMembers: false, manageRoles: false, manageSettings: false, viewAnalytics: true, createTickets: true, assignTickets: false, deleteTickets: false, exportData: false },
+    },
+    {
+        id: 'role-viewer', name: 'Viewer',
+        permissions: { manageTeam: false, manageMembers: false, manageRoles: false, manageSettings: false, viewAnalytics: true, createTickets: false, assignTickets: false, deleteTickets: false, exportData: false },
+    },
+];
+
+// Team Activities
+export const mockTeamActivities = [
+    { id: 'ta-1', teamId: 'team-1', type: 'member_added', user: 'John Doe', target: 'Mike Johnson', message: 'added Mike Johnson to Engineering', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-2', teamId: 'team-1', type: 'settings_changed', user: 'John Doe', message: 'updated SLA settings for Engineering', timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-3', teamId: 'team-2', type: 'member_removed', user: 'Sarah Smith', target: 'Lisa Chen', message: 'removed Lisa Chen from Support', timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-4', teamId: 'team-1', type: 'role_changed', user: 'Emily Davis', target: 'John Doe', message: 'changed John Doe\'s role to Senior Agent', timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-5', teamId: 'team-2', type: 'team_created', user: 'David Wilson', message: 'created the Support team', timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-6', teamId: 'team-3', type: 'member_added', user: 'John Doe', target: 'Sarah Smith', message: 'added Sarah Smith to Sales', timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-7', teamId: 'team-4', type: 'settings_changed', user: 'Emily Davis', message: 'updated working hours for Design', timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString() },
+    { id: 'ta-8', teamId: 'team-1', type: 'member_added', user: 'Emily Davis', target: 'Emily Davis', message: 'joined Engineering team', timestamp: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString() },
+];
+
+const teamIds = ['team-1', 'team-2', 'team-3', 'team-4'];
+
 const generateTickets = () => {
     const titles = [
         'Login page not responding',
@@ -69,6 +139,7 @@ const generateTickets = () => {
             priority,
             status,
             category: categories[Math.floor(Math.random() * categories.length)],
+            teamId: teamIds[i % teamIds.length],
             assignee: users[Math.floor(Math.random() * users.length)],
             reporter: users[Math.floor(Math.random() * users.length)],
             createdAt: createdDate.toISOString(),
@@ -106,37 +177,37 @@ export const mockUsers = [
 export const mockTeamMembers = [
     {
         id: 'user-1', name: 'John Doe', email: 'john@example.com', role: 'Senior Agent',
-        avatar: 'JD', expertise: ['Security', 'API', 'Database'],
+        avatar: 'JD', teamId: 'team-1', expertise: ['Security', 'API', 'Database'],
         currentTickets: 5, resolvedToday: 8, resolvedThisWeek: 34,
         avgResolutionTime: 4.5, satisfaction: 4.8, status: 'online',
     },
     {
         id: 'user-2', name: 'Sarah Smith', email: 'sarah@example.com', role: 'Team Lead',
-        avatar: 'SS', expertise: ['Frontend', 'UX', 'Performance'],
+        avatar: 'SS', teamId: 'team-2', expertise: ['Frontend', 'UX', 'Performance'],
         currentTickets: 3, resolvedToday: 6, resolvedThisWeek: 28,
         avgResolutionTime: 3.2, satisfaction: 4.9, status: 'online',
     },
     {
         id: 'user-3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Support Agent',
-        avatar: 'MJ', expertise: ['Backend', 'Infrastructure', 'DevOps'],
+        avatar: 'MJ', teamId: 'team-1', expertise: ['Backend', 'Infrastructure', 'DevOps'],
         currentTickets: 7, resolvedToday: 4, resolvedThisWeek: 22,
         avgResolutionTime: 6.1, satisfaction: 4.5, status: 'away',
     },
     {
         id: 'user-4', name: 'Emily Davis', email: 'emily@example.com', role: 'QA Specialist',
-        avatar: 'ED', expertise: ['Testing', 'Automation', 'Mobile'],
+        avatar: 'ED', teamId: 'team-1', expertise: ['Testing', 'Automation', 'Mobile'],
         currentTickets: 4, resolvedToday: 9, resolvedThisWeek: 40,
         avgResolutionTime: 2.8, satisfaction: 4.7, status: 'online',
     },
     {
         id: 'user-5', name: 'David Wilson', email: 'david@example.com', role: 'Admin',
-        avatar: 'DW', expertise: ['Security', 'Compliance', 'Integration'],
+        avatar: 'DW', teamId: 'team-2', expertise: ['Security', 'Compliance', 'Integration'],
         currentTickets: 2, resolvedToday: 3, resolvedThisWeek: 18,
         avgResolutionTime: 5.0, satisfaction: 4.6, status: 'offline',
     },
     {
         id: 'user-6', name: 'Lisa Chen', email: 'lisa@example.com', role: 'Support Agent',
-        avatar: 'LC', expertise: ['Email', 'Customer Success', 'Onboarding'],
+        avatar: 'LC', teamId: 'team-2', expertise: ['Email', 'Customer Success', 'Onboarding'],
         currentTickets: 6, resolvedToday: 7, resolvedThisWeek: 31,
         avgResolutionTime: 3.9, satisfaction: 4.8, status: 'online',
     },

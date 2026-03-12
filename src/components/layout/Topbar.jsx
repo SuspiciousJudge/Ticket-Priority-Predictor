@@ -4,6 +4,8 @@ import { Search, Bell, Menu, Moon, Sun, User, Settings, HelpCircle, LogOut, X, C
 import { useStore } from '../../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatRelativeTime } from '../../lib/utils';
+import TeamSelector from './TeamSelector';
+import CreateTeamModal from '../common/CreateTeamModal';
 
 function NotificationPanel({ isOpen, onClose }) {
     const { notifications, markNotificationRead, markAllNotificationsRead, deleteNotification, getUnreadCount } = useStore();
@@ -201,6 +203,7 @@ export default function Topbar() {
     const [searchFocused, setSearchFocused] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+    const [createTeamOpen, setCreateTeamOpen] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -225,6 +228,8 @@ export default function Topbar() {
                     >
                         <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                     </button>
+
+                    <TeamSelector onCreateTeam={() => setCreateTeamOpen(true)} />
 
                     <div className="relative">
                         <div className={cn(
@@ -297,6 +302,7 @@ export default function Topbar() {
                     </div>
                 </div>
             </div>
+            <CreateTeamModal isOpen={createTeamOpen} onClose={() => setCreateTeamOpen(false)} />
         </header>
     );
 }

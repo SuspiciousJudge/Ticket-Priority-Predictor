@@ -1,7 +1,10 @@
 import { create } from 'zustand';
-import { mockTickets, mockNotifications, mockTeamMembers } from '../data/mockData';
+import { persist } from 'zustand/middleware';
+import { mockTickets, mockNotifications, mockTeamMembers, mockTeams } from '../data/mockData';
 
-export const useStore = create((set, get) => ({
+export const useStore = create(
+  persist(
+    (set, get) => ({
     // Dark mode
     darkMode: false,
     toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
@@ -9,6 +12,32 @@ export const useStore = create((set, get) => ({
     // Sidebar
     sidebarCollapsed: false,
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+    // Teams
+    teams: mockTeams,
+    currentTeam: mockTeams[0],
+    setCurrentTeam: (teamId) => set((state) => ({
+        currentTeam: state.teams.find(t => t.id === teamId) || state.teams[0]
+    })),
+    addTeam: (team) => set((state) => ({ teams: [...state.teams, team] })),
+    updateTeam: (teamId, updates) => set((state) => ({
+        teams: state.teams.map(t => t.id === teamId ? { ...t, ...updates } : t),
+        currentTeam: state.currentTeam?.id === teamId ? { ...state.currentTeam, ...updates } : state.currentTeam,
+    })),
+    removeTeam: (teamId) => set((state) => ({
+        teams: state.teams.filter(t => t.id !== teamId),
+        currentTeam: state.currentTeam?.id === teamId ? state.teams[0] : state.currentTeam,
+    })),
+    getTeamTickets: () => {
+        const { tickets, currentTeam } = get();
+        if (!currentTeam) return tickets;
+        return tickets.filter(t => t.teamId === currentTeam.id);
+    },
+    getTeamMembers: () => {
+        const { teamMembers, currentTeam } = get();
+        if (!currentTeam) return teamMembers;
+        return teamMembers.filter(m => currentTeam.members.includes(m.id));
+    },
 
     // Tickets
     tickets: mockTickets,
@@ -77,4 +106,10 @@ export const useStore = create((set, get) => ({
     updateSettings: (section, updates) => set((state) => ({
         settings: { ...state.settings, [section]: { ...state.settings[section], ...updates } }
     })),
-}));
+}),
+    {
+      name: 'ticket-app-storage',
+      partialize: (state) => ({ currentTeam: state.currentTeam }),
+    }
+  )
+);

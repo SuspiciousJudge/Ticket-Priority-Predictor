@@ -5,12 +5,15 @@ import RecentTicketsTable from '../components/dashboard/RecentTicketsTable';
 import ActivityTimeline from '../components/dashboard/ActivityTimeline';
 import TrendingCarousel from '../components/dashboard/TrendingCarousel';
 import QuickActions from '../components/dashboard/QuickActions';
-import { mockTickets } from '../data/mockData';
+import { useStore } from '../store/useStore';
 
 export default function Dashboard() {
-    const totalTickets = mockTickets.length;
-    const criticalTickets = mockTickets.filter((t) => t.priority === 'Critical').length;
-    const resolvedToday = mockTickets.filter((t) => {
+    const { getTeamTickets, currentTeam } = useStore();
+    const teamTickets = getTeamTickets();
+
+    const totalTickets = teamTickets.length;
+    const criticalTickets = teamTickets.filter((t) => t.priority === 'Critical').length;
+    const resolvedToday = teamTickets.filter((t) => {
         const today = new Date();
         const updatedDate = new Date(t.updatedAt);
         return t.status === 'Resolved' &&
@@ -25,7 +28,7 @@ export default function Dashboard() {
                     Dashboard
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                    Welcome back! Here's what's happening with your tickets today.
+                    {currentTeam ? `${currentTeam.name} team` : 'All teams'} — Here's what's happening with your tickets today.
                 </p>
             </div>
 

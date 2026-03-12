@@ -7,7 +7,8 @@ import { motion } from 'framer-motion';
 import { Download, TrendingUp, TrendingDown, Calendar, Ticket, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { mockAnalyticsData, mockTickets } from '../data/mockData';
+import { mockAnalyticsData } from '../data/mockData';
+import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -36,11 +37,13 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Analytics() {
     const [dateRange, setDateRange] = useState('7d');
+    const { getTeamTickets, currentTeam } = useStore();
+    const teamTickets = getTeamTickets();
 
-    const totalTickets = mockTickets.length;
-    const resolvedTickets = mockTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
+    const totalTickets = teamTickets.length;
+    const resolvedTickets = teamTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
     const resolutionRate = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 100) : 0;
-    const avgConfidence = Math.round(mockTickets.reduce((s, t) => s + t.aiConfidence, 0) / mockTickets.length);
+    const avgConfidence = teamTickets.length > 0 ? Math.round(teamTickets.reduce((s, t) => s + t.aiConfidence, 0) / teamTickets.length) : 0;
 
     const handleExport = () => {
         toast.success('Analytics report exported!');
@@ -52,7 +55,7 @@ export default function Analytics() {
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Analytics</h1>
-                    <p className="text-gray-600 dark:text-gray-400">Insights and metrics about your ticket system</p>
+                    <p className="text-gray-600 dark:text-gray-400">{currentTeam ? `${currentTeam.name} team` : 'All teams'} — Insights and metrics</p>
                 </div>
                 <div className="flex items-center space-x-3">
                     <div className="flex items-center bg-gray-100 dark:bg-dark-border rounded-lg p-1">

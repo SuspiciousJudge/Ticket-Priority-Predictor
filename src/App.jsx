@@ -32,6 +32,7 @@ function App() {
           <Route path="create" element={<CreateTicket />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="team" element={<Team />} />
+          <Route path="team/manage" element={<Team />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

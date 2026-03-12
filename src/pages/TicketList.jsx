@@ -4,7 +4,7 @@ import { Search, Filter, LayoutGrid, List, Plus, Columns3, ChevronLeft, ChevronR
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
-import { mockTickets } from '../data/mockData';
+import { useStore } from '../store/useStore';
 import { formatRelativeTime, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -13,6 +13,8 @@ const ITEMS_PER_PAGE = 12;
 
 export default function TicketList() {
     const navigate = useNavigate();
+    const { getTeamTickets } = useStore();
+    const teamTickets = getTeamTickets();
     const [viewMode, setViewMode] = useState('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPriority, setSelectedPriority] = useState([]);
@@ -22,7 +24,7 @@ export default function TicketList() {
     const [showFilters, setShowFilters] = useState(false);
 
     const filteredTickets = useMemo(() => {
-        return mockTickets.filter((ticket) => {
+        return teamTickets.filter((ticket) => {
             const matchesSearch = ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) || ticket.id.includes(searchQuery);
             const matchesPriority = selectedPriority.length === 0 || selectedPriority.includes(ticket.priority);
             const matchesStatus = selectedStatus.length === 0 || selectedStatus.includes(ticket.status);
