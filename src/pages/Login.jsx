@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import { authAPI, setAuthToken } from '../services/api';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -21,11 +22,15 @@ export default function Login() {
 
     const onSubmit = async (data) => {
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            toast.success('Login successful! Welcome back!');
+        try {
+            const res = await authAPI.login(data);
+            const token = res.data.data.token;
+            setAuthToken(token);
+            toast.success('Login successful!');
             navigate('/');
-        }, 1500);
+        } catch (err) {
+            toast.error(err.message || 'Login failed');
+        } finally { setLoading(false); }
     };
 
     const handleSocialLogin = (provider) => {

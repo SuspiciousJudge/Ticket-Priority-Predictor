@@ -12,6 +12,7 @@ import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Toast from './components/common/Toast';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
   return (
@@ -25,15 +26,17 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="tickets" element={<TicketList />} />
-          <Route path="tickets/:id" element={<TicketDetail />} />
-          <Route path="create" element={<CreateTicket />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="team" element={<Team />} />
-          <Route path="team/manage" element={<Team />} />
-          <Route path="settings" element={<Settings />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="tickets" element={<TicketList />} />
+            <Route path="tickets/:id" element={<TicketDetail />} />
+            <Route path="create" element={<CreateTicket />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="team" element={<Team />} />
+            <Route path="team/manage" element={<Team />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

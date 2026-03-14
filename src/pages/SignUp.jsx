@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff, User, Chrome, Github } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
+import { authAPI, setAuthToken } from '../services/api';
 
 export default function SignUp() {
     const navigate = useNavigate();
@@ -27,13 +28,16 @@ export default function SignUp() {
             toast.error('Please agree to the terms and conditions');
             return;
         }
-
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            toast.success('Account created successfully! Welcome aboard!');
+        try {
+            const res = await authAPI.register({ name: data.name, email: data.email, password: data.password });
+            const token = res.data.data.token;
+            setAuthToken(token);
+            toast.success('Account created and logged in');
             navigate('/');
-        }, 1500);
+        } catch (err) {
+            toast.error(err.message || 'Signup failed');
+        } finally { setLoading(false); }
     };
 
     const handleSocialSignUp = (provider) => {
