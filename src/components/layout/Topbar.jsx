@@ -53,11 +53,11 @@ function NotificationPanel({ isOpen, onClose, notifications, setNotifications })
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute right-16 top-14 w-96 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-2xl shadow-strong z-50 overflow-hidden"
+                    className="absolute right-16 top-14 w-96 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
                 >
                     <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
                         <div className="flex items-center space-x-2">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Notifications</h3>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
                             {notifications?.filter(n => !n.read).length > 0 && (
                                 <span className="px-2 py-0.5 text-xs font-bold text-white bg-danger-500 rounded-full">
                                     {notifications.filter(n => !n.read).length}
@@ -89,7 +89,7 @@ function NotificationPanel({ isOpen, onClose, notifications, setNotifications })
                                         animate={{ opacity: 1 }}
                                         className={cn(
                                             'flex items-start space-x-3 p-4 border-b border-gray-100 dark:border-dark-border/50 hover:bg-gray-50 dark:hover:bg-dark-border/30 transition-colors cursor-pointer',
-                                            !notif.read && 'bg-primary-50/50 dark:bg-primary-900/10'
+                                            !notif.read && 'bg-orange-50/40 dark:bg-orange-900/10'
                                         )}
                                     >
                                         <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0', color)}>
@@ -165,11 +165,11 @@ function ProfileDropdown({ isOpen, onClose, user, onLogout }) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute right-0 top-14 w-72 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-2xl shadow-strong z-50 overflow-hidden"
+                    className="absolute right-0 top-14 w-72 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
                 >
                     <div className="p-4 border-b border-gray-200 dark:border-dark-border">
                         <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
+                            <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-lg">
                                 {fallbackName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2)}
                             </div>
                             <div>
@@ -215,10 +215,15 @@ export default function Topbar() {
     const queryClient = useQueryClient();
     const { toggleSidebar, darkMode, toggleDarkMode } = useStore();
     
-    // Fetch user mapping correctly matching ProtectedRoute format
+    // Reads the ['me'] cache populated by ProtectedRoute (or set directly after login).
+    // Uses the same queryKey so no extra network request is made.
     const { data: user } = useQuery({
         queryKey: ['me'],
-        queryFn: async () => { const res = await authAPI.getMe(); return res.data.data || res.data; }
+        queryFn: async () => {
+            const res = await authAPI.getMe();
+            return res.data.data;
+        },
+        staleTime: 5 * 60 * 1000,
     });
 
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -251,7 +256,7 @@ export default function Topbar() {
     };
 
     return (
-        <header className="h-16 bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border sticky top-0 z-30">
+        <header className="h-16 bg-white dark:bg-dark-surface border-b border-gray-100 dark:border-dark-border sticky top-0 z-30 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
             <div className="h-full flex items-center justify-between px-6">
                 <div className="flex items-center space-x-4">
                     <button
@@ -275,10 +280,10 @@ export default function Topbar() {
                                 onFocus={() => setSearchFocused(true)}
                                 onBlur={() => setSearchFocused(false)}
                                 className={cn(
-                                    'w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg',
+                                    'w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-dark-border rounded-xl',
                                     'bg-gray-50 dark:bg-dark-bg focus:bg-white dark:focus:bg-dark-surface',
-                                    'text-gray-900 dark:text-white placeholder-gray-500',
-                                    'focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none',
+                                    'text-gray-900 dark:text-white placeholder-gray-400 text-sm',
+                                    'focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none',
                                     'transition-all duration-200'
                                 )}
                             />
@@ -325,7 +330,7 @@ export default function Topbar() {
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || 'Guest User'}</div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role || 'User'}</div>
                             </div>
-                            <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center text-white font-semibold ring-2 ring-transparent group-hover:ring-primary-300 transition-all">
+                            <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white font-semibold ring-2 ring-transparent group-hover:ring-orange-200 transition-all">
                                 {(user?.name || 'GU').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2)}
                             </div>
                             <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform hidden md:block', profileOpen && 'rotate-180')} />

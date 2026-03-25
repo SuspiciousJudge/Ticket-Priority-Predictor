@@ -121,8 +121,8 @@ export default function CreateTicket() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Ticket</h1>
-                    <p className="text-gray-600 dark:text-gray-400">Fill in the details and let AI predict the priority</p>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Create Ticket</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Fill in the details and let AI predict the priority</p>
                 </div>
                 <AnimatePresence>
                     {draftSaved && (
@@ -146,9 +146,9 @@ export default function CreateTicket() {
                                     {...register('title', { required: 'Title is required', minLength: { value: 5, message: 'Title must be at least 5 characters' } })}
                                     placeholder="Describe the issue briefly..."
                                     className={cn(
-                                        'w-full px-4 py-3 border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-400',
-                                        'focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all',
-                                        errors.title ? 'border-danger-500' : 'border-gray-300 dark:border-dark-border'
+                                        'w-full px-4 py-3 border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white placeholder-gray-400',
+                                        'focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all',
+                                        errors.title ? 'border-red-400' : 'border-gray-200 dark:border-dark-border'
                                     )}
                                 />
                                 {errors.title && <p className="mt-1 text-sm text-danger-600">{errors.title.message}</p>}
@@ -158,14 +158,14 @@ export default function CreateTicket() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
-                                    <select {...register('category')} className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
+                                    <select {...register('category')} className="w-full px-4 py-3 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all text-sm">
                                         <option value="">Auto-detect by AI</option>
                                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Customer Tier</label>
-                                    <select {...register('customerTier')} className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
+                                    <select {...register('customerTier')} className="w-full px-4 py-3 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all text-sm">
                                         <option value="">Select tier</option>
                                         {customerTiers.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
@@ -180,9 +180,9 @@ export default function CreateTicket() {
                                     rows={6}
                                     placeholder="Provide detailed information about the issue..."
                                     className={cn(
-                                        'w-full px-4 py-3 border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-400 resize-none',
-                                        'focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all',
-                                        errors.description ? 'border-danger-500' : 'border-gray-300 dark:border-dark-border'
+                                        'w-full px-4 py-3 border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white placeholder-gray-400 resize-none',
+                                        'focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all',
+                                        errors.description ? 'border-red-400' : 'border-gray-200 dark:border-dark-border'
                                     )}
                                 />
                                 {errors.description && <p className="mt-1 text-sm text-danger-600">{errors.description.message}</p>}
@@ -196,7 +196,7 @@ export default function CreateTicket() {
                                 <input
                                     {...register('tags')}
                                     placeholder="e.g. authentication, safari, urgent (comma-separated)"
-                                    className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full px-4 py-3 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all"
                                 />
                             </div>
 

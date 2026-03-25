@@ -70,7 +70,7 @@ export default function PriorityChart() {
 
     return (
         <Card className="p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
                 Priority Distribution
             </h3>
 

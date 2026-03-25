@@ -114,7 +114,7 @@ export default function CreateTeamModal({ isOpen, onClose }) {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative bg-white dark:bg-dark-surface rounded-2xl shadow-strong w-full max-w-lg mx-4 max-h-[85vh] flex flex-col"
+                className="relative bg-white dark:bg-dark-surface rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-dark-border">
@@ -155,13 +155,13 @@ export default function CreateTeamModal({ isOpen, onClose }) {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Team Name *</label>
                                         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none"
                                             placeholder="e.g. Platform Engineering" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                                         <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3}
-                                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+                                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none resize-none"
                                             placeholder="What does this team do?" />
                                     </div>
                                     <div>
@@ -177,7 +177,7 @@ export default function CreateTeamModal({ isOpen, onClose }) {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
                                         <select value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none">
+                                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none">
                                             {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
                                     </div>
@@ -187,7 +187,7 @@ export default function CreateTeamModal({ isOpen, onClose }) {
                             {step === 1 && (
                                 <div className="space-y-4">
                                     <input value={memberSearch} onChange={e => setMemberSearch(e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                                        className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none"
                                         placeholder="Search members..." />
                                     <div className="space-y-2 max-h-60 overflow-y-auto">
                                         {isLoadingUsers ? (
@@ -201,7 +201,7 @@ export default function CreateTeamModal({ isOpen, onClose }) {
                                                     <button key={m.id} onClick={() => toggleMember(m.id)}
                                                         className={cn('w-full flex items-center space-x-3 p-3 rounded-xl border transition-all text-left',
                                                             selected ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600' : 'border-gray-200 dark:border-dark-border hover:border-gray-300')}>
-                                                        <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                                        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                                                             {m.avatar}
                                                         </div>
                                                         <div className="flex-1 min-w-0">

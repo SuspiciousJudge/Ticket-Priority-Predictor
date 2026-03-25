@@ -75,7 +75,7 @@ body {
 
 
 *:focus-visible {
-  outline: 2px solid #667eea;
+  outline: 2px solid #f97316;
   outline-offset: 2px;
 }
 
@@ -102,7 +102,7 @@ select {
 
 /* Swiper Carousel Styles */
 .trending-swiper .swiper-pagination-bullet {
-  background: #667eea;
+  background: #f97316;
   opacity: 0.4;
   width: 8px;
   height: 8px;
@@ -116,7 +116,7 @@ select {
 
 .trending-swiper .swiper-button-next,
 .trending-swiper .swiper-button-prev {
-  color: #667eea;
+  color: #f97316;
   background: rgba(255, 255, 255, 0.9);
   width: 36px;
   height: 36px;

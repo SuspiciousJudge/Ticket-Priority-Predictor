@@ -119,9 +119,9 @@ export default function TicketList() {
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">All Tickets</h1>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        {isLoading ? 'Loading...' : `${totalTicketsCount} tickets found`}
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">All Tickets</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        {isLoading ? 'Loading…' : `${totalTicketsCount} tickets`}
                     </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -141,7 +141,7 @@ export default function TicketList() {
                                 placeholder="Search by title or ID..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all"
                             />
                             {isFetching && searchQuery === debouncedSearch && (
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -149,7 +149,7 @@ export default function TicketList() {
                                 </div>
                             )}
                         </div>
-                        <button onClick={() => setShowFilters(!showFilters)} className={cn('flex items-center space-x-2 px-4 py-2.5 rounded-lg border transition-all', showFilters ? 'border-primary-500 bg-primary-50 text-primary-600' : 'border-gray-300 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-border')}>
+                        <button onClick={() => setShowFilters(!showFilters)} className={cn('flex items-center space-x-2 px-3.5 py-2 rounded-lg border transition-all text-sm', showFilters ? 'border-orange-300 bg-orange-50 text-orange-600' : 'border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-border')}>
                             <Filter className="w-4 h-4" />
                             <span className="text-sm font-medium">Filters</span>
                             {(selectedPriority.length > 0 || selectedStatus.length > 0) && (
@@ -268,7 +268,7 @@ export default function TicketList() {
                                             <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 line-clamp-2">{ticket.title}</h4>
                                             <div className="flex items-center justify-between">
                                                 {ticket.assignee ? (
-                                                    <div className="w-6 h-6 bg-gradient-primary rounded-full flex items-center justify-center text-white text-[10px] font-bold">
+                                                    <div className="w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
                                                         {ticket.assignee.name?.substring(0, 2).toUpperCase()}
                                                     </div>
                                                 ) : (
@@ -304,7 +304,7 @@ export default function TicketList() {
                                             <div className="flex items-center space-x-2">
                                                 {ticket.assignee ? (
                                                     <>
-                                                        <div className="w-7 h-7 bg-gradient-primary rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                                                        <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                                                             {ticket.assignee.name.substring(0, 2).toUpperCase()}
                                                         </div>
                                                         <span className="text-sm text-gray-600 dark:text-gray-400">{ticket.assignee.name}</span>
@@ -364,7 +364,7 @@ export default function TicketList() {
                                             <td className="py-3 px-4">
                                                 {ticket.assignee ? (
                                                     <div className="flex items-center space-x-2">
-                                                        <div className="w-7 h-7 bg-gradient-primary rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                                                        <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                                                             {ticket.assignee.name.substring(0, 2).toUpperCase()}
                                                         </div>
                                                         <span className="text-sm text-gray-700 dark:text-gray-300">{ticket.assignee.name}</span>

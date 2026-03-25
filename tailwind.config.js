@@ -8,16 +8,16 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#f5f7ff',
-          100: '#ebedff',
-          200: '#d6dbff',
-          300: '#b8bfff',
-          400: '#8d98ff',
-          500: '#667eea',
-          600: '#5568d3',
-          700: '#4553b8',
-          800: '#3a4695',
-          900: '#2f3a7a',
+          50: '#fff7ed',
+          100: '#ffedd5',
+          200: '#fed7aa',
+          300: '#fdba74',
+          400: '#fb923c',
+          500: '#f97316',
+          600: '#ea580c',
+          700: '#c2410c',
+          800: '#9a3412',
+          900: '#7c2d12',
         },
         secondary: {
           50: '#ecfeff',
@@ -123,8 +123,8 @@ export default {
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
       },
-      backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundImage: {
+        'gradient-primary': 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
         'gradient-secondary': 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
         'gradient-success': 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
         'gradient-warning': 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -134,7 +134,7 @@ export default {
         'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
         'medium': '0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 10px 30px -5px rgba(0, 0, 0, 0.08)',
         'strong': '0 10px 40px -5px rgba(0, 0, 0, 0.2), 0 20px 60px -10px rgba(0, 0, 0, 0.15)',
-        'colored-primary': '0 10px 30px -5px rgba(102, 126, 234, 0.3)',
+        'colored-primary': '0 10px 30px -5px rgba(249, 115, 22, 0.3)',
         'colored-danger': '0 10px 30px -5px rgba(239, 68, 68, 0.3)',
       },
     },

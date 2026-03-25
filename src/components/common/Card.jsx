@@ -1,5 +1,4 @@
 import { cn } from '../../lib/utils';
-import { motion } from 'framer-motion';
 
 export default function Card({
     children,
@@ -10,31 +9,19 @@ export default function Card({
     onClick,
     ...props
 }) {
-    const baseStyles = 'rounded-xl transition-all duration-300';
-    const glassStyles = glassmorphism
-        ? 'bg-white/70 dark:bg-dark-surface/70 backdrop-blur-md border border-white/20'
-        : 'bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border';
-    const interactiveStyles = hover ? 'hover:shadow-strong' : '';
-    const cursorStyles = clickable ? 'cursor-pointer' : '';
-
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            whileHover={clickable ? { y: -4, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' } : {}}
+        <div
             className={cn(
-                baseStyles,
-                glassStyles,
-                interactiveStyles,
-                cursorStyles,
-                'shadow-soft',
+                'bg-white border border-gray-200 rounded-xl shadow-sm transition-all duration-150',
+                clickable && 'cursor-pointer hover:border-gray-300 hover:shadow-md',
+                !clickable && hover && 'hover:shadow-md',
+                glassmorphism && 'bg-white/80 backdrop-blur-sm',
                 className
             )}
             onClick={onClick}
             {...props}
         >
             {children}
-        </motion.div>
+        </div>
     );
 }

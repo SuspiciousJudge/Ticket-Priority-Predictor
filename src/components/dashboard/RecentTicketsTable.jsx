@@ -38,12 +38,12 @@ export default function RecentTicketsTable() {
     return (
         <Card className="p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                     Recent Tickets
                 </h3>
                 <button
                     onClick={() => navigate('/tickets')}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-sm text-orange-500 hover:text-orange-600 font-medium transition-colors"
                 >
                     View all &rarr;
                 </button>
@@ -112,7 +112,7 @@ export default function RecentTicketsTable() {
                                 <td className="py-3 px-4">
                                     {ticket.assignee ? (
                                         <div className="flex items-center space-x-2">
-                                            <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                                            <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                                                 {ticket.assignee.name?.substring(0, 2).toUpperCase()}
                                             </div>
                                             <span className="text-sm text-gray-900 dark:text-white">

@@ -1,4 +1,4 @@
-﻿import { cn } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
 
 export default function Button({
@@ -15,7 +15,7 @@ export default function Button({
     const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden';
 
     const variants = {
-        primary: 'bg-gradient-primary text-white hover:shadow-colored-primary focus:ring-primary-500',
+        primary: 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white focus:ring-orange-400',
         secondary: 'bg-gradient-secondary text-white hover:shadow-lg focus:ring-secondary-500',
         success: 'bg-gradient-success text-white hover:shadow-lg focus:ring-success-500',
         danger: 'bg-gradient-danger text-white hover:shadow-colored-danger focus:ring-danger-500',

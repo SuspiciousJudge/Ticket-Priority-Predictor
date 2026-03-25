@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -60,7 +60,7 @@ export default function Modal({
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
                             transition={{ duration: 0.2 }}
                             className={cn(
-                                'bg-white dark:bg-dark-surface rounded-2xl shadow-strong w-full overflow-hidden',
+                                'bg-white dark:bg-dark-surface rounded-xl shadow-xl w-full overflow-hidden',
                                 sizes[size]
                             )}
                             onClick={(e) => e.stopPropagation()}

@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, User, Chrome, Github, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import Button from '../components/common/Button';
 import { authAPI, setAuthToken } from '../services/api';
 
 const PASSWORD_RULES = [
@@ -18,23 +17,29 @@ function PasswordStrength({ password }) {
     const passed = PASSWORD_RULES.filter((r) => r.test(password)).length;
     const total = PASSWORD_RULES.length;
     const pct = (passed / total) * 100;
-    const color = pct < 50 ? 'bg-danger-500' : pct < 100 ? 'bg-warning-500' : 'bg-success-500';
+    const barColor =
+        pct < 50 ? 'bg-red-400' : pct < 100 ? 'bg-yellow-400' : 'bg-green-500';
 
     return (
-        <div className="mt-2 space-y-2">
-            <div className="h-1.5 rounded-full bg-gray-200 dark:bg-dark-border overflow-hidden">
+        <div className="mt-2.5 space-y-2">
+            <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
                 <motion.div
-                    className={`h-full rounded-full ${color}`}
+                    className={`h-full rounded-full ${barColor}`}
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
                     transition={{ duration: 0.3 }}
                 />
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {PASSWORD_RULES.map((rule) => {
                     const ok = rule.test(password);
                     return (
-                        <div key={rule.key} className={`flex items-center gap-1.5 text-xs ${ok ? 'text-success-600' : 'text-gray-400'}`}>
+                        <div
+                            key={rule.key}
+                            className={`flex items-center gap-1 text-xs transition-colors ${
+                                ok ? 'text-green-600' : 'text-gray-400'
+                            }`}
+                        >
                             {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                             {rule.label}
                         </div>
@@ -42,6 +47,74 @@ function PasswordStrength({ password }) {
                 })}
             </div>
         </div>
+    );
+}
+
+function StarburstIcon({ size = 38 }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {Array.from({ length: 8 }, (_, i) => (
+                <rect
+                    key={i}
+                    x="18"
+                    y="1"
+                    width="2"
+                    height="15"
+                    rx="1"
+                    fill="#f97316"
+                    transform={`rotate(${i * 45} 19 19)`}
+                />
+            ))}
+        </svg>
+    );
+}
+
+function DarkPanel() {
+    return (
+        <motion.div
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="hidden lg:flex flex-1 relative overflow-hidden flex-col"
+            style={{ backgroundColor: '#0c0c0c' }}
+        >
+            {/* Warm glow beams at the bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-3/4 pointer-events-none">
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background:
+                            'radial-gradient(ellipse 70% 80% at 25% 110%, rgba(234,88,12,0.55) 0%, transparent 65%)',
+                    }}
+                />
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background:
+                            'radial-gradient(ellipse 50% 60% at 55% 110%, rgba(251,146,60,0.35) 0%, transparent 60%)',
+                    }}
+                />
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background:
+                            'radial-gradient(ellipse 40% 50% at 15% 110%, rgba(253,186,116,0.25) 0%, transparent 55%)',
+                    }}
+                />
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10 flex flex-col h-full p-14 pt-20">
+                <motion.p
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35, duration: 0.65 }}
+                    className="text-5xl font-bold text-white leading-tight max-w-xs"
+                >
+                    Convert your tickets into resolved issues.
+                </motion.p>
+            </div>
+        </motion.div>
     );
 }
 
@@ -63,23 +136,23 @@ export default function SignUp() {
     const password = watch('password');
 
     const registerMutation = useMutation({
-        mutationFn: (data) => authAPI.register({ name: data.name, email: data.email, password: data.password }),
+        mutationFn: (data) =>
+            authAPI.register({ name: data.name, email: data.email, password: data.password }),
         onSuccess: (res) => {
-            const token = res.data.data.token;
+            const { token, user } = res.data.data;
             setAuthToken(token, true);
+            queryClient.setQueryData(['me'], user);
             toast.success('Account created — welcome!');
-            queryClient.invalidateQueries({ queryKey: ['me'] });
             navigate('/');
         },
         onError: (err) => {
-            // Map backend field-level errors to react-hook-form
             if (err.fieldErrors) {
                 Object.entries(err.fieldErrors).forEach(([field, msg]) => {
                     setError(field, { type: 'server', message: msg });
                 });
             }
             toast.error(err.message || 'Signup failed');
-        }
+        },
     });
 
     const onSubmit = (data) => {
@@ -90,121 +163,89 @@ export default function SignUp() {
         registerMutation.mutate(data);
     };
 
-    const handleSocialSignUp = (provider) => {
-        toast(`${provider} sign-up is coming soon!`, { icon: 'ℹ️' });
-    };
-
     return (
         <div className="min-h-screen flex">
-            
+            <DarkPanel />
+
+            {/* Form panel */}
             <motion.div
-                initial={{ opacity: 0, x: -50 }}
+                initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex-1 flex items-center justify-center p-8 bg-white dark:bg-dark-bg"
+                transition={{ duration: 0.6 }}
+                className="flex-1 flex items-center justify-center p-8 bg-white overflow-y-auto"
             >
-                <div className="w-full max-w-md">
-                    
-                    <div className="flex items-center space-x-2 mb-8">
-                        <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-lg">TP</span>
-                        </div>
-                        <span className="font-bold text-2xl text-gray-900 dark:text-white">
-                            TicketPro
-                        </span>
+                <div className="w-full max-w-sm py-8">
+                    {/* Logo */}
+                    <div className="mb-7">
+                        <StarburstIcon size={38} />
                     </div>
 
-                    
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                            Create an account
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Start your 14-day free trial today
-                        </p>
+                    {/* Heading */}
+                    <div className="mb-6">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-1.5">Get Started</h1>
+                        <p className="text-sm text-gray-500">TicketPro — Let&apos;s get started</p>
                     </div>
 
-                    
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        <button
-                            onClick={() => handleSocialSignUp('Google')}
-                            className="flex items-center justify-center space-x-2 px-4 py-3 border-2 border-gray-300 dark:border-dark-border rounded-lg hover:border-primary-500 dark:hover:border-primary-500 transition-all duration-200 group"
-                        >
-                            <Chrome className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary-600" />
-                            <span className="font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary-600">
-                                Google
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => handleSocialSignUp('GitHub')}
-                            className="flex items-center justify-center space-x-2 px-4 py-3 border-2 border-gray-300 dark:border-dark-border rounded-lg hover:border-primary-500 dark:hover:border-primary-500 transition-all duration-200 group"
-                        >
-                            <Github className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary-600" />
-                            <span className="font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary-600">
-                                GitHub
-                            </span>
-                        </button>
-                    </div>
+                    {/* Divider */}
+                    <div className="w-full h-px bg-gray-200 mb-7" />
 
-                    
-                    <div className="relative mb-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-300 dark:border-dark-border"></div>
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-white dark:bg-dark-bg text-gray-500 dark:text-gray-400">
-                                or sign up with email
-                            </span>
-                        </div>
-                    </div>
-
-                    
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        
+                    {/* Form */}
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                        {/* Full name */}
                         <div>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Full name"
-                                    {...register('name', { required: 'Name is required' })}
-                                    className={`w-full pl-10 pr-4 py-3 border ${errors.name ? 'border-danger-500' : 'border-gray-300 dark:border-dark-border'} rounded-lg bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all`}
-                                />
-                            </div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1.5">
+                                Your name
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Jane Smith"
+                                {...register('name', { required: 'Name is required' })}
+                                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-400 outline-none transition-all text-sm ${
+                                    errors.name
+                                        ? 'border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100'
+                                        : 'border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100'
+                                }`}
+                            />
                             {errors.name && (
-                                <p className="mt-1 text-sm text-danger-600">{errors.name.message}</p>
+                                <p className="mt-1.5 text-xs text-red-500">{errors.name.message}</p>
                             )}
                         </div>
 
-                        
+                        {/* Email */}
                         <div>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="email"
-                                    placeholder="Email address"
-                                    {...register('email', {
-                                        required: 'Email is required',
-                                        pattern: {
-                                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                            message: 'Invalid email address',
-                                        },
-                                    })}
-                                    className={`w-full pl-10 pr-4 py-3 border ${errors.email ? 'border-danger-500' : 'border-gray-300 dark:border-dark-border'} rounded-lg bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all`}
-                                />
-                            </div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1.5">
+                                Your email
+                            </label>
+                            <input
+                                type="email"
+                                placeholder="you@example.com"
+                                {...register('email', {
+                                    required: 'Email is required',
+                                    pattern: {
+                                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                        message: 'Invalid email address',
+                                    },
+                                })}
+                                className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-400 outline-none transition-all text-sm ${
+                                    errors.email
+                                        ? 'border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100'
+                                        : 'border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100'
+                                }`}
+                            />
                             {errors.email && (
-                                <p className="mt-1 text-sm text-danger-600">{errors.email.message}</p>
+                                <p className="mt-1.5 text-xs text-red-500">{errors.email.message}</p>
                             )}
                         </div>
 
-                        
+                        {/* Password */}
                         <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1.5">
+                                Create new password
+                            </label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
-                                    placeholder="Password"
+                                    placeholder="••••••••••"
                                     {...register('password', {
                                         required: 'Password is required',
                                         minLength: {
@@ -212,168 +253,139 @@ export default function SignUp() {
                                             message: 'Password must be at least 8 characters',
                                         },
                                         validate: {
-                                            hasUpper: (v) => /[A-Z]/.test(v) || 'Must contain an uppercase letter',
-                                            hasNumber: (v) => /[0-9]/.test(v) || 'Must contain a number',
+                                            hasUpper: (v) =>
+                                                /[A-Z]/.test(v) || 'Must contain an uppercase letter',
+                                            hasNumber: (v) =>
+                                                /[0-9]/.test(v) || 'Must contain a number',
                                         },
                                     })}
-                                    className={`w-full pl-10 pr-12 py-3 border ${errors.password ? 'border-danger-500' : 'border-gray-300 dark:border-dark-border'} rounded-lg bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all`}
+                                    className={`w-full px-4 py-3 pr-11 border rounded-lg text-gray-900 placeholder-gray-400 outline-none transition-all text-sm ${
+                                        errors.password
+                                            ? 'border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100'
+                                            : 'border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100'
+                                    }`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
                             {errors.password && (
-                                <p className="mt-1 text-sm text-danger-600">{errors.password.message}</p>
+                                <p className="mt-1.5 text-xs text-red-500">{errors.password.message}</p>
                             )}
                             <PasswordStrength password={password} />
                         </div>
 
-                        
+                        {/* Confirm password */}
                         <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1.5">
+                                Confirm password
+                            </label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type={showConfirmPassword ? 'text' : 'password'}
-                                    placeholder="Confirm password"
+                                    placeholder="••••••••••"
                                     {...register('confirmPassword', {
                                         required: 'Please confirm your password',
                                         validate: (value) =>
                                             value === password || 'Passwords do not match',
                                     })}
-                                    className={`w-full pl-10 pr-12 py-3 border ${errors.confirmPassword ? 'border-danger-500' : 'border-gray-300 dark:border-dark-border'} rounded-lg bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all`}
+                                    className={`w-full px-4 py-3 pr-11 border rounded-lg text-gray-900 placeholder-gray-400 outline-none transition-all text-sm ${
+                                        errors.confirmPassword
+                                            ? 'border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100'
+                                            : 'border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100'
+                                    }`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
-                                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    {showConfirmPassword ? (
+                                        <EyeOff className="w-4 h-4" />
+                                    ) : (
+                                        <Eye className="w-4 h-4" />
+                                    )}
                                 </button>
                             </div>
                             {errors.confirmPassword && (
-                                <p className="mt-1 text-sm text-danger-600">{errors.confirmPassword.message}</p>
+                                <p className="mt-1.5 text-xs text-red-500">
+                                    {errors.confirmPassword.message}
+                                </p>
                             )}
                         </div>
 
-                        
-                        <label className="flex items-start space-x-2 cursor-pointer">
+                        {/* Terms */}
+                        <label className="flex items-start gap-2.5 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={agreedToTerms}
                                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 shrink-0"
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                            <span className="text-sm text-gray-600 leading-relaxed">
                                 I agree to the{' '}
-                                <Link to="/terms" className="text-primary-600 hover:text-primary-700 font-medium">
+                                <Link
+                                    to="/terms"
+                                    className="font-medium text-gray-900 underline underline-offset-2 hover:text-orange-500 transition-colors"
+                                >
                                     Terms of Service
                                 </Link>{' '}
                                 and{' '}
-                                <Link to="/privacy" className="text-primary-600 hover:text-primary-700 font-medium">
+                                <Link
+                                    to="/privacy"
+                                    className="font-medium text-gray-900 underline underline-offset-2 hover:text-orange-500 transition-colors"
+                                >
                                     Privacy Policy
                                 </Link>
                             </span>
                         </label>
 
-                        
-                        <Button type="submit" loading={registerMutation.isPending} className="w-full">
-                            {registerMutation.isPending ? 'Creating account...' : 'Create Account'}
-                        </Button>
+                        {/* Submit */}
+                        <button
+                            type="submit"
+                            disabled={registerMutation.isPending}
+                            className="w-full py-3 px-4 rounded-lg font-medium text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 transition-colors duration-150 disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+                        >
+                            {registerMutation.isPending && (
+                                <svg
+                                    className="animate-spin w-4 h-4"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                    />
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    />
+                                </svg>
+                            )}
+                            {registerMutation.isPending ? 'Creating account...' : 'Create new account'}
+                        </button>
                     </form>
 
-                    
-                    <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+                    {/* Footer */}
+                    <p className="mt-8 text-center text-sm text-gray-500">
                         Already have an account?{' '}
-                        <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-                            Sign in
+                        <Link
+                            to="/login"
+                            className="font-semibold text-gray-900 underline underline-offset-2 hover:text-orange-500 transition-colors"
+                        >
+                            Login
                         </Link>
                     </p>
-                </div>
-            </motion.div>
-
-            
-            <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="hidden lg:flex flex-1 bg-gradient-to-br from-success-600 via-secondary-600 to-primary-800 relative overflow-hidden"
-            >
-                <div className="absolute inset-0">
-                    <motion.div
-                        animate={{
-                            scale: [1, 1.2, 1],
-                            rotate: [0, 90, 0],
-                        }}
-                        transition={{
-                            duration: 20,
-                            repeat: Infinity,
-                            ease: 'linear',
-                        }}
-                        className="absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-                    />
-                    <motion.div
-                        animate={{
-                            scale: [1.2, 1, 1.2],
-                            rotate: [90, 0, 90],
-                        }}
-                        transition={{
-                            duration: 15,
-                            repeat: Infinity,
-                            ease: 'linear',
-                        }}
-                        className="absolute bottom-20 right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"
-                    />
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center justify-center p-12 text-white">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3, type: 'spring' }}
-                        className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-8"
-                    >
-                        <span className="text-white font-bold text-3xl">TP</span>
-                    </motion.div>
-
-                    <motion.h2
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                        className="text-4xl font-bold mb-4 text-center"
-                    >
-                        Join Thousands of Teams
-                    </motion.h2>
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 }}
-                        className="text-xl text-white/80 mb-12 text-center max-w-md"
-                    >
-                        Start managing your support tickets more efficiently today
-                    </motion.p>
-
-                    <div className="space-y-4 w-full max-w-md">
-                        {[
-                            '✓ 14-day free trial, no credit card required',
-                            '✓ AI-powered smart routing and prioritization',
-                            '✓ Real-time collaboration with your team',
-                            '✓ Advanced analytics and reporting',
-                        ].map((feature, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.7 + index * 0.1 }}
-                                className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-lg p-4"
-                            >
-                                <span className="text-lg font-medium">{feature}</span>
-                            </motion.div>
-                        ))}
-                    </div>
                 </div>
             </motion.div>
         </div>

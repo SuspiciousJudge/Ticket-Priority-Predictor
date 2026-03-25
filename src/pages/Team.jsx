@@ -182,8 +182,8 @@ export default function Team() {
         return (
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Team Management</h1>
-                    <p className="text-gray-600 dark:text-gray-400">Select a team to manage or create a new one.</p>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Team Management</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Select a team to manage or create a new one.</p>
                 </div>
                 {allTeamsLoading ? (
                     <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-primary-500 animate-spin" /></div>
@@ -232,8 +232,8 @@ export default function Team() {
                         {team.initials || currentTeam.initials}
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{team.name} Management</h1>
-                        <p className="text-gray-600 dark:text-gray-400">{teamMembers.length} members · {teamTickets.length} active tickets</p>
+                        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{team.name}</h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{teamMembers.length} members · {teamTickets.length} active tickets</p>
                     </div>
                 </div>
             </div>
@@ -322,7 +322,7 @@ export default function Team() {
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div className="flex items-center space-x-3">
                                                         <div className="relative">
-                                                            <div className="w-14 h-14 bg-gradient-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                                            <div className="w-14 h-14 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-lg">
                                                                 {u.avatar || u.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()}
                                                             </div>
                                                         </div>
@@ -394,7 +394,7 @@ export default function Team() {
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
                                             <input type="number" min={1} value={settingsForm.sla?.[key] || ''}
                                                 onChange={e => setSettingsForm(f => ({ ...f, sla: { ...f.sla, [key]: Number(e.target.value) } }))}
-                                                className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                                className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                         </div>
                                     ))}
                                 </div>
@@ -406,13 +406,13 @@ export default function Team() {
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
                                         <input type="time" value={settingsForm.workingHours?.start || ''}
                                             onChange={e => setSettingsForm(f => ({ ...f, workingHours: { ...f.workingHours, start: e.target.value } }))}
-                                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
                                         <input type="time" value={settingsForm.workingHours?.end || ''}
                                             onChange={e => setSettingsForm(f => ({ ...f, workingHours: { ...f.workingHours, end: e.target.value } }))}
-                                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                     </div>
                                 </div>
                             </Card>
@@ -480,7 +480,7 @@ export default function Team() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select User *</label>
                         <select value={formData.userId} onChange={e => setFormData({ ...formData, userId: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none">
+                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none">
                             <option value="">-- Choose User --</option>
                             {availableUsers.map(u => (
                                 <option key={u._id} value={u._id}>{u.name} ({u.email})</option>
@@ -490,7 +490,7 @@ export default function Team() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
                         <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none">
+                            className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none">
                             {['admin', 'manager', 'member'].map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
                         </select>
                     </div>

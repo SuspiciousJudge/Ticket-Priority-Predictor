@@ -95,8 +95,8 @@ export default function Analytics() {
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Analytics</h1>
-                    <p className="text-gray-600 dark:text-gray-400">{currentTeam ? `${currentTeam.name} team` : 'All teams'} — Insights and metrics</p>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Analytics</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{currentTeam ? `${currentTeam.name}` : 'All teams'} · Insights and metrics</p>
                 </div>
                 <div className="flex items-center space-x-3">
                     <div className="flex items-center bg-gray-100 dark:bg-dark-border rounded-lg p-1">
@@ -115,26 +115,24 @@ export default function Analytics() {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: 'Total Tickets', value: totalTickets, icon: Ticket, trend: '+12%', up: true, gradient: 'bg-gradient-primary' },
-                    { label: 'Resolved', value: resolvedTickets, icon: CheckCircle, trend: '+24%', up: true, gradient: 'bg-gradient-success' },
-                    { label: 'Resolution Rate', value: `${resolutionRate}%`, icon: TrendingUp, trend: '+5%', up: true, gradient: 'bg-gradient-secondary' },
-                    { label: 'Avg Resolution Time', value: `${Math.round(stats?.avgResolution || 0)}h`, icon: Clock, trend: '-3%', up: true, gradient: 'bg-gradient-warning' },
+                    { label: 'Total Tickets',       value: totalTickets,                           icon: Ticket,      iconBg: 'bg-orange-50',  iconColor: 'text-orange-500',  trend: '+12%', up: true  },
+                    { label: 'Resolved',            value: resolvedTickets,                        icon: CheckCircle, iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500', trend: '+24%', up: true  },
+                    { label: 'Resolution Rate',     value: `${resolutionRate}%`,                   icon: TrendingUp,  iconBg: 'bg-sky-50',     iconColor: 'text-sky-500',     trend: '+5%',  up: true  },
+                    { label: 'Avg Resolution Time', value: `${Math.round(stats?.avgResolution || 0)}h`, icon: Clock,  iconBg: 'bg-amber-50',   iconColor: 'text-amber-500',   trend: '-3%',  up: false },
                 ].map((stat, i) => (
                     <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
                         <Card className="p-5">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
-                                    <div className="flex items-center space-x-1 mt-1">
-                                        {stat.up ? <TrendingUp className="w-3.5 h-3.5 text-success-600" /> : <TrendingDown className="w-3.5 h-3.5 text-danger-600" />}
-                                        <span className={cn('text-xs font-medium', stat.up ? 'text-success-600' : 'text-danger-600')}>{stat.trend}</span>
-                                        <span className="text-xs text-gray-500">vs last period</span>
-                                    </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
+                                <div className={cn('p-2 rounded-lg', stat.iconBg)}>
+                                    <stat.icon className={cn('w-4 h-4', stat.iconColor)} />
                                 </div>
-                                <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', stat.gradient)}>
-                                    <stat.icon className="w-6 h-6 text-white" />
-                                </div>
+                            </div>
+                            <p className="text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">{stat.value}</p>
+                            <div className="flex items-center gap-1 mt-1.5">
+                                {stat.up ? <TrendingUp className="w-3 h-3 text-emerald-600" /> : <TrendingDown className="w-3 h-3 text-red-500" />}
+                                <span className={cn('text-xs font-medium', stat.up ? 'text-emerald-600' : 'text-red-500')}>{stat.trend}</span>
+                                <span className="text-xs text-gray-400">vs last period</span>
                             </div>
                         </Card>
                     </motion.div>

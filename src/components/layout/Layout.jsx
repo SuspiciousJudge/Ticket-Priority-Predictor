@@ -27,7 +27,7 @@ export default function Layout() {
     useTeamFilter();
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+        <div className="min-h-screen bg-[#f7f7f8] dark:bg-dark-bg">
             <Sidebar />
 
             <div className={cn(
@@ -37,7 +37,7 @@ export default function Layout() {
                 <Topbar />
                 <Breadcrumbs />
 
-                <main className="p-6">
+                <main className="p-6 lg:p-8">
                     <Suspense fallback={<PageLoader />}>
                         <PageTransition>
                             <Outlet />

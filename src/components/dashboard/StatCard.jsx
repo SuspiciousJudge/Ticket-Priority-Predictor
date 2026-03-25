@@ -1,87 +1,65 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import Card from '../common/Card';
-import { cn } from '../../lib/utils';
 
-export default function StatCard({
-    title,
-    value,
-    icon: Icon,
-    gradient,
-    trend,
-    trendValue,
-    delay = 0
-}) {
+const colorMap = {
+    'bg-gradient-primary':   { bg: 'bg-orange-50',  icon: 'text-orange-500'  },
+    'bg-gradient-danger':    { bg: 'bg-red-50',     icon: 'text-red-500'     },
+    'bg-gradient-success':   { bg: 'bg-emerald-50', icon: 'text-emerald-500' },
+    'bg-gradient-secondary': { bg: 'bg-sky-50',     icon: 'text-sky-500'     },
+    'bg-gradient-warning':   { bg: 'bg-amber-50',   icon: 'text-amber-500'   },
+};
+
+export default function StatCard({ title, value, icon: Icon, gradient, trend, trendValue, delay = 0 }) {
     const [count, setCount] = useState(0);
     const targetValue = typeof value === 'string' ? parseInt(value) : value;
+
     useEffect(() => {
-        if (isNaN(targetValue)) {
-            setCount(value);
-            return;
-        }
-
-        const duration = 1000;
-        const steps = 60;
-        const stepValue = targetValue / steps;
-        let currentStep = 0;
-
-        const timer = setInterval(() => {
-            currentStep++;
-            setCount(Math.min(Math.floor(stepValue * currentStep), targetValue));
-
-            if (currentStep >= steps) {
-                clearInterval(timer);
-            }
-        }, duration / steps);
-
-        return () => clearInterval(timer);
+        if (isNaN(targetValue)) { setCount(value); return; }
+        const steps = 50;
+        const stepVal = targetValue / steps;
+        let s = 0;
+        const t = setInterval(() => {
+            s++;
+            setCount(Math.min(Math.floor(stepVal * s), targetValue));
+            if (s >= steps) clearInterval(t);
+        }, 700 / steps);
+        return () => clearInterval(t);
     }, [targetValue, value]);
+
+    const colors = colorMap[gradient] ?? colorMap['bg-gradient-primary'];
+    const display = typeof count === 'number' && !isNaN(count) ? count.toLocaleString() : count;
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay }}
+            transition={{ duration: 0.3, delay }}
         >
-            <Card className="p-6 hover:scale-105 cursor-pointer">
-                <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            {title}
-                        </p>
-                        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 animate-count-up">
-                            {typeof count === 'number' && !isNaN(count) ? count.toLocaleString() : count}
-                        </h3>
-
-                        {trend && (
-                            <div className="flex items-center space-x-1">
-                                {trend === 'up' ? (
-                                    <TrendingUp className="w-4 h-4 text-success-600" />
-                                ) : (
-                                    <TrendingDown className="w-4 h-4 text-danger-600" />
-                                )}
-                                <span className={cn(
-                                    'text-sm font-medium',
-                                    trend === 'up' ? 'text-success-600' : 'text-danger-600'
-                                )}>
-                                    {trendValue}
-                                </span>
-                                <span className="text-xs text-gray-500">vs last week</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={cn(
-                        'w-14 h-14 rounded-xl flex items-center justify-center',
-                        gradient
-                    )}>
-                        <Icon className="w-7 h-7 text-white" />
+            <Card className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-medium text-gray-500">{title}</p>
+                    <div className={`p-2 rounded-lg ${colors.bg}`}>
+                        <Icon className={`w-4 h-4 ${colors.icon}`} />
                     </div>
                 </div>
 
-                
-                <div className={cn('h-1 mt-4 rounded-full', gradient)} />
+                <p className="text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">
+                    {display}
+                </p>
+
+                {trend && (
+                    <div className={`flex items-center gap-1 mt-1.5 text-xs font-medium ${
+                        trend === 'up' ? 'text-emerald-600' : 'text-red-500'
+                    }`}>
+                        {trend === 'up'
+                            ? <TrendingUp className="w-3 h-3" />
+                            : <TrendingDown className="w-3 h-3" />
+                        }
+                        <span>{trendValue} from last week</span>
+                    </div>
+                )}
             </Card>
         </motion.div>
     );

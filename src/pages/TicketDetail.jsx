@@ -114,7 +114,7 @@ export default function TicketDetail() {
         return (
             <div className="text-center py-12">
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                     {error?.status === 404 ? 'Ticket Not Found' : 'Error Loading Ticket'}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -139,7 +139,7 @@ export default function TicketDetail() {
                 </button>
                 <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="text-xl font-semibold text-gray-900 dark:text-white font-mono">
                             {ticket.ticketId ? `#${ticket.ticketId}` : `Ticket`}
                         </h1>
                         <Badge type="status" value={ticket.status}>{ticket.status}</Badge>
@@ -203,7 +203,7 @@ export default function TicketDetail() {
                                 {ticket.comments.map((comment, i) => (
                                     <motion.div key={comment._id || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                                         className="flex space-x-3 p-4 bg-gray-50 dark:bg-dark-border/30 rounded-xl">
-                                        <div className="w-8 h-8 bg-gradient-secondary rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                             {comment.author?.name ? comment.author.name[0].toUpperCase() : 'U'}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -227,7 +227,7 @@ export default function TicketDetail() {
                                 onChange={(e) => setCommentText(e.target.value)}
                                 placeholder="Add a comment..."
                                 rows={2}
-                                className="flex-1 px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm"
+                                className="flex-1 px-4 py-3 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-sm text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none transition-all"
                             />
                             <Button type="submit" icon={commentMutation.isPending ? undefined : Send} loading={commentMutation.isPending} disabled={!commentText.trim()}>
                                 {commentMutation.isPending ? '' : 'Send'}
@@ -271,7 +271,7 @@ export default function TicketDetail() {
                             <div>
                                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">Assignee</label>
                                 <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center text-white font-semibold">
+                                    <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white font-semibold">
                                         {assigneeInitials}
                                     </div>
                                     <div>
@@ -285,7 +285,7 @@ export default function TicketDetail() {
                             <div>
                                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">Reporter</label>
                                 <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-secondary rounded-full flex items-center justify-center text-white font-semibold">
+                                    <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-white font-semibold">
                                         {reporterInitials}
                                     </div>
                                     <div>

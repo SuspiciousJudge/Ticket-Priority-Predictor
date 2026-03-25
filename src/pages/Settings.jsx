@@ -61,9 +61,16 @@ export default function Settings() {
         });
     };
 
-    // User Profile Data Map
-    const { data: userRes, isLoading } = useQuery({ queryKey: ['me'], queryFn: authAPI.getMe });
-    const user = userRes?.data?.data;
+    // Reads from the ['me'] cache (same key as ProtectedRoute / Topbar).
+    // The cache stores the user object directly — no extra unwrapping needed.
+    const { data: user, isLoading } = useQuery({
+        queryKey: ['me'],
+        queryFn: async () => {
+            const res = await authAPI.getMe();
+            return res.data.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
     const [profileForm, setProfileForm] = useState({ name: '', email: '', role: '', avatar: '' });
 
     useEffect(() => {
@@ -89,8 +96,8 @@ export default function Settings() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
-                <p className="text-gray-600 dark:text-gray-400">Manage your account and application preferences</p>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Settings</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage your account and application preferences</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -99,7 +106,7 @@ export default function Settings() {
                     <nav className="space-y-1">
                         {tabs.map(tab => (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                className={cn('flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-left transition-all', activeTab === tab.id ? 'bg-gradient-primary text-white shadow-colored-primary' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-border')}>
+                                className={cn('flex items-center space-x-3 w-full px-4 py-3 rounded-lg text-left transition-all text-sm font-medium', activeTab === tab.id ? 'bg-orange-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-border')}>
                                 <tab.icon className="w-5 h-5" />
                                 <span className="text-sm font-medium">{tab.label}</span>
                             </button>
@@ -116,7 +123,7 @@ export default function Settings() {
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Profile Settings</h2>
                                     <div className="flex items-center space-x-6 mb-8">
                                         <div className="relative">
-                                            <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                                            <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-2xl">
                                                 {profileForm.avatar || (profileForm.name ? profileForm.name[0]?.toUpperCase() : 'U')}
                                             </div>
                                             <button className="absolute -bottom-1 -right-1 w-8 h-8 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-shadow">
@@ -132,12 +139,12 @@ export default function Settings() {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
                                             <input value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                                className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                                             <input value={profileForm.email} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                                className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                         </div>
                                     </div>
                                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Change Password</h3>
@@ -145,7 +152,7 @@ export default function Settings() {
                                         <div className="relative">
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Password</label>
                                             <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
-                                                className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                                className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                             <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9 text-gray-400 hover:text-gray-600">
                                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                             </button>
@@ -153,7 +160,7 @@ export default function Settings() {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
                                             <input type="password" placeholder="••••••••"
-                                                className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
+                                                className="w-full px-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" />
                                         </div>
                                     </div>
                                     <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-dark-border">
@@ -226,7 +233,7 @@ export default function Settings() {
                                                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{sla.label}</label>
                                                         <input type="number" value={uiSettings.system[sla.key]}
                                                             onChange={e => updateSettings('system', { [sla.key]: parseInt(e.target.value) || 0 })}
-                                                            className={cn('w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:border-transparent outline-none text-sm', sla.color)} />
+                                                            className={cn('w-full px-3 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none text-sm', sla.color)} />
                                                     </div>
                                                 ))}
                                             </div>
