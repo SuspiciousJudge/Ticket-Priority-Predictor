@@ -5,7 +5,7 @@ import { User, Bell, Cog, Link2, Palette, Save, Camera, Eye, EyeOff, Key, Mail, 
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useStore } from '../store/useStore';
-import { authAPI, usersAPI } from '../services/api';
+import { authAPI, usersAPI, aiAPI } from '../services/api';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -65,6 +65,23 @@ export default function Settings() {
     const { data: userRes, isLoading } = useQuery({ queryKey: ['me'], queryFn: authAPI.getMe });
     const user = userRes?.data?.data;
     const [profileForm, setProfileForm] = useState({ name: '', email: '', role: '', avatar: '' });
+
+    const {
+        data: modelHealthRes,
+        isLoading: isModelHealthLoading,
+        isFetching: isModelHealthFetching,
+        error: modelHealthError,
+        refetch: refetchModelHealth,
+    } = useQuery({
+        queryKey: ['ai-model-health'],
+        queryFn: aiAPI.modelHealth,
+        staleTime: 60 * 1000,
+        retry: 1,
+        enabled: activeTab === 'system',
+        refetchInterval: activeTab === 'system' ? 30 * 1000 : false,
+    });
+    const modelHealth = modelHealthRes?.data?.data;
+    const modelReady = Boolean(modelHealth?.modelExists && modelHealth?.runtimeAvailable && modelHealth?.modelLoaded);
 
     useEffect(() => {
         if (user) {
@@ -229,6 +246,66 @@ export default function Settings() {
                                                             className={cn('w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:border-transparent outline-none text-sm', sla.color)} />
                                                     </div>
                                                 ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center space-x-2">
+                                                    <Shield className="w-4 h-4 text-gray-500" />
+                                                    <span>AI Model Health</span>
+                                                </h3>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => refetchModelHealth()}
+                                                    loading={isModelHealthFetching}
+                                                >
+                                                    Refresh
+                                                </Button>
+                                            </div>
+
+                                            <div className="p-4 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-border/30 space-y-3">
+                                                {isModelHealthLoading ? (
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">Checking model status...</p>
+                                                ) : modelHealthError ? (
+                                                    <p className="text-sm text-danger-600 dark:text-danger-400">Unable to load model health</p>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-sm text-gray-700 dark:text-gray-300">Current Status</p>
+                                                            <span className={cn('px-2.5 py-1 rounded-full text-xs font-semibold', modelReady ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300' : 'bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300')}>
+                                                                {modelReady ? 'Operational' : 'Issue Detected'}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                                                            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border">
+                                                                <span className="text-gray-600 dark:text-gray-400">Model File</span>
+                                                                <span className={modelHealth?.modelExists ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}>
+                                                                    {modelHealth?.modelExists ? 'Found' : 'Missing'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border">
+                                                                <span className="text-gray-600 dark:text-gray-400">Runtime</span>
+                                                                <span className={modelHealth?.runtimeAvailable ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}>
+                                                                    {modelHealth?.runtimeAvailable ? 'Available' : 'Unavailable'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border">
+                                                                <span className="text-gray-600 dark:text-gray-400">Loaded</span>
+                                                                <span className={modelHealth?.modelLoaded ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}>
+                                                                    {modelHealth?.modelLoaded ? 'Yes' : 'No'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                                            <p><strong>Input:</strong> {(modelHealth?.inputNames || []).join(', ') || 'N/A'}</p>
+                                                            <p><strong>Output:</strong> {(modelHealth?.outputNames || []).join(', ') || 'N/A'}</p>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

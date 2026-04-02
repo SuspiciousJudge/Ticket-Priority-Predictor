@@ -1,0 +1,642 @@
+Ticket Priority Predictor - Detailed Revision Document
+======================================================
+
+0) What This Document Covers
+----------------------------
+This document is a complete technical revision of the project with:
+- Full stack summary.
+- File/folder purpose mapping.
+- Backend API and runtime behavior.
+- Frontend architecture and state flow.
+- ML integration points.
+- Security, deployment, and operations notes.
+
+
+1) System Purpose and Business Flow
+-----------------------------------
+This project is an IT support/ticketing platform where users can:
+1. Create and manage support tickets.
+2. Assign tickets to teams and members.
+3. Track ticket status and analytics.
+4. Use AI to predict priority and support decision making.
+
+Core flow:
+1. User creates ticket from frontend form.
+2. Backend receives request and runs priority prediction.
+3. Backend saves ticket in MongoDB.
+4. Socket events notify connected clients.
+5. UI updates dashboards, lists, and detail pages.
+
+
+2) Top-Level Files and Their Roles
+----------------------------------
+eslint.config.js
+- ESLint flat config for both frontend and backend paths.
+- Defines lint behavior and warnings/errors policy.
+
+index.html
+- Vite entry HTML template where frontend bundle mounts.
+
+package.json
+- Root/frontend dependency and script manifest.
+- Contains frontend scripts (dev, build, lint, preview).
+
+postcss.config.js
+- PostCSS pipeline config, used with Tailwind/autoprefixer.
+
+tailwind.config.js
+- Tailwind design token and content scanning config.
+
+vite.config.js
+- Frontend bundler config.
+- Includes plugin setup and manual chunk splitting strategy.
+
+README.md
+- Project setup and usage notes (human-facing overview).
+
+skills-lock.json
+- Workspace/tooling lock for skills metadata.
+
+ta
+- Misc workspace file (not part of runtime path).
+
+dist/
+- Generated frontend production output.
+
+public/
+- Static assets served by Vite.
+
+src/
+- Entire React frontend source.
+
+backend/
+- Entire Node.js API and ML inference service.
+
+.agents/
+- Agent skill definitions and scripts (development assistant tooling).
+
+
+3) Frontend File-by-File Map (src)
+----------------------------------
+src/main.jsx
+- React root bootstrap and application mount.
+
+src/App.jsx
+- Main app router/layout composition entry.
+
+src/App.css
+- App-level styles.
+
+src/index.css
+- Global styles, Tailwind layer imports, base theme classes.
+
+src/assets/
+- UI assets (icons/images if present).
+
+src/components/common/AIAssistantWidget.jsx
+- Embedded assistant widget UI and interaction shell.
+
+src/components/common/Badge.jsx
+- Reusable badge/chip component for statuses/tags.
+
+src/components/common/Breadcrumbs.jsx
+- Route breadcrumb navigation UI.
+
+src/components/common/Button.jsx
+- Reusable button variant system.
+
+src/components/common/Card.jsx
+- Standard card container abstraction.
+
+src/components/common/CreateTeamModal.jsx
+- Team creation modal form and submit flow.
+
+src/components/common/EmptyState.jsx
+- Empty-list/empty-page placeholder component.
+
+src/components/common/Input.jsx
+- Shared input control styling wrapper.
+
+src/components/common/LoadingSkeleton.jsx
+- Skeleton loading placeholders.
+
+src/components/common/Modal.jsx
+- Generic modal overlay and close behavior.
+
+src/components/common/PageTransition.jsx
+- Route/page animation wrapper.
+
+src/components/common/Toast.jsx
+- Notification view helper.
+
+src/components/dashboard/ActivityTimeline.jsx
+- Ticket/team activity timeline visuals.
+
+src/components/dashboard/PriorityChart.jsx
+- Priority distribution chart (Recharts based).
+
+src/components/dashboard/QuickActions.jsx
+- Dashboard quick action shortcuts.
+
+src/components/dashboard/RecentTicketsTable.jsx
+- Recent ticket listing block for dashboard.
+
+src/components/dashboard/StatCard.jsx
+- KPI summary card (counts, trends, labels).
+
+src/components/dashboard/TrendingCarousel.jsx
+- Trending insights carousel/rotator.
+
+src/components/layout/Layout.jsx
+- Global app shell composition (sidebar/topbar/content).
+
+src/components/layout/Sidebar.jsx
+- Main navigation sidebar.
+
+src/components/layout/TeamSelector.jsx
+- Team context selector.
+
+src/components/layout/Topbar.jsx
+- Header controls and top-level actions.
+
+src/components/auth/ProtectedRoute.jsx
+- Route guard for authenticated pages.
+
+src/components/analytics/
+- Analytics-specific reusable visualization components.
+
+src/components/tickets/
+- Ticket-centric reusable components (forms/items/details helpers).
+
+src/contexts/
+- React context containers (if used by current pages/components).
+
+src/data/mockData.js
+- Mock datasets used by analytics/dashboard/team views.
+
+src/hooks/useTeamFilter.js
+- Team-aware filtering and URL/state synchronization hook.
+
+src/lib/utils.js
+- Generic helper utilities (class merges/string helpers/etc).
+
+src/pages/Analytics.jsx
+- Analytics screen and chart composition.
+
+src/pages/CreateTicket.jsx
+- Ticket creation form, validation, submit + AI suggestion trigger.
+
+src/pages/Dashboard.jsx
+- Main dashboard with summary metrics and activity.
+
+src/pages/ForgotPassword.jsx
+- Forgot password request screen.
+
+src/pages/Login.jsx
+- Login form and auth flow.
+
+src/pages/ResetPassword.jsx
+- Password reset completion screen.
+
+src/pages/Settings.jsx
+- User and system preferences page.
+- Contains AI model health card with refresh and polling.
+
+src/pages/SignUp.jsx
+- User registration screen.
+
+src/pages/Team.jsx
+- Team details, members, workloads, team ticket data.
+
+src/pages/TicketDetail.jsx
+- Single ticket details + comments + update actions.
+
+src/pages/TicketList.jsx
+- Search/filter/sort/pagination listing of tickets.
+
+src/services/api.js
+- Axios client setup.
+- Token storage helpers.
+- Service groups: authAPI, ticketsAPI, teamsAPI, usersAPI, uploadAPI, aiAPI.
+
+src/store/useStore.js
+- Zustand global store (theme, app state, cross-page toggles).
+
+
+4) Backend File-by-File Map (backend)
+-------------------------------------
+backend/package.json
+- Backend dependency manifest and scripts.
+- Includes check:model utility script.
+
+backend/server.js
+- API server entrypoint.
+- Loads env, connects DB, applies middleware.
+- Mounts routes, health endpoint, error handler.
+- Initializes Socket.IO server.
+
+backend/config/cloudinary.js
+- Cloudinary configuration for media upload integration.
+
+backend/config/db.js
+- MongoDB connection bootstrap using mongoose.connect(uri).
+
+backend/controllers/authController.js
+- Register/login/me/logout and password reset controller logic.
+
+backend/controllers/teamController.js
+- Team CRUD, team member operations.
+
+backend/controllers/ticketController.js
+- Ticket CRUD, comments, stats, similar tickets, CSV export.
+- Integrates predictPriority before ticket creation.
+
+backend/controllers/userController.js
+- User profile and performance endpoints.
+
+backend/middleware/auth.js
+- JWT verification and request user extraction.
+
+backend/middleware/errorHandler.js
+- Unified API error response formatter.
+
+backend/middleware/validation.js
+- express-validator rules and validation handling.
+
+backend/models/Comment.js
+- Comment subdocument/schema model definition.
+
+backend/models/Team.js
+- Team schema, metadata, member relations.
+
+backend/models/Ticket.js
+- Ticket schema including status, priority, tags, AI predictions, comments.
+
+backend/models/User.js
+- User schema, auth fields, team/expertise metadata.
+
+backend/models/priority_model.onnx
+- Exported machine-learning model used for local priority inference.
+
+backend/routes/ai.js
+- AI endpoints:
+  - POST /api/ai/chat
+  - POST /api/ai/suggest-priority
+  - GET /api/ai/model-health
+
+backend/routes/auth.js
+- Authentication route declarations and validators.
+
+backend/routes/teams.js
+- Team route declarations.
+
+backend/routes/tickets.js
+- Ticket route declarations.
+
+backend/routes/upload.js
+- Upload endpoint(s) and storage handling.
+
+backend/routes/users.js
+- User route declarations.
+
+backend/scripts/seed.js
+- Seed utility for initial database population.
+
+backend/scripts/train.py
+- Model training script (RandomForest -> ONNX export).
+
+backend/scripts/checkModel.js
+- Script to run one prediction and print result.
+
+backend/scripts/checkModelHealth.js
+- Script to print model runtime health metadata.
+
+backend/scripts/ITSM/
+- Reference research notebook and dataset notes used for ML experimentation.
+
+backend/uploads/
+- Local upload destination when cloud storage is not used.
+
+backend/utils/helpers.js
+- General backend helper methods (example: ticket ID generation).
+
+backend/utils/mlPredict.js
+- Core ML inference + fallback heuristic implementation.
+- Exposes predictPriority and getModelHealth.
+
+
+5) Exact Tech Stack and Why It Matters
+--------------------------------------
+This section explains each major technology in plain terms:
+1. What it is.
+2. Where you used it.
+3. What impact it had on your project.
+
+Backend Runtime and API Layer
+1. Node.js
+- What it is:
+  JavaScript runtime outside the browser.
+- Where used:
+  Entire backend runtime in backend/server.js and all backend JS files.
+- Impact on your project:
+  Lets you run backend logic in the same language family as frontend (JS/React), reducing context switching and speeding development.
+
+2. Express.js
+- What it is:
+  Lightweight web framework for Node.js.
+- Where used:
+  Route/middleware server composition in backend/server.js and backend/routes/*.
+- Impact on your project:
+  Gives a clear API structure (auth, tickets, teams, users, ai, upload) and makes middleware-based security and validation easy to apply consistently.
+
+3. MongoDB
+- What it is:
+  NoSQL document database.
+- Where used:
+  Primary data store for users, teams, tickets, comments.
+- Impact on your project:
+  Flexible schema evolution for ticket fields, AI metadata, and nested document patterns without heavy relational migrations.
+
+4. Mongoose
+- What it is:
+  ODM (Object Document Mapper) for MongoDB.
+- Where used:
+  backend/models/* and backend/config/db.js.
+- Impact on your project:
+  Adds schema definitions, validation hooks, and query convenience, which improves maintainability and data consistency.
+
+5. JWT (jsonwebtoken)
+- What it is:
+  Token-based auth mechanism.
+- Where used:
+  backend/controllers/authController.js and backend/middleware/auth.js.
+- Impact on your project:
+  Enables stateless auth and protected endpoints like model-health, team updates, and ticket operations.
+
+6. bcryptjs
+- What it is:
+  Password hashing library.
+- Where used:
+  Authentication flow in auth controller/model logic.
+- Impact on your project:
+  Prevents plain-text password storage and strengthens account security.
+
+7. express-validator
+- What it is:
+  Request validation toolkit.
+- Where used:
+  backend/middleware/validation.js and route validators.
+- Impact on your project:
+  Blocks malformed payloads early and provides cleaner error handling.
+
+8. multer + cloudinary + multer-storage-cloudinary
+- What it is:
+  File upload middleware + cloud media storage integration.
+- Where used:
+  backend/routes/upload.js and backend/config/cloudinary.js.
+- Impact on your project:
+  Supports ticket attachments and media handling with local/cloud options.
+
+9. Socket.IO
+- What it is:
+  Real-time bidirectional event framework.
+- Where used:
+  backend/server.js and frontend socket client integration.
+- Impact on your project:
+  Enables instant UI updates on ticket create/update events, reducing stale data and manual reloads.
+
+10. helmet, cors, compression, express-rate-limit
+- What it is:
+  Security and performance middleware set.
+- Where used:
+  backend/server.js middleware chain.
+- Impact on your project:
+  Improves API hardening, controls cross-origin traffic, reduces payload size, and limits abuse spikes.
+
+Frontend Application Layer
+1. React 19
+- What it is:
+  Component-based UI library.
+- Where used:
+  Entire src tree (pages/components/layout/state interactions).
+- Impact on your project:
+  Enables modular UI, reusable components, and fast feature iteration.
+
+2. Vite (rolldown-vite)
+- What it is:
+  Fast dev/build toolchain.
+- Where used:
+  Root build lifecycle via vite.config.js and npm scripts.
+- Impact on your project:
+  Faster local development and optimized production bundles with manual chunk splitting.
+
+3. React Router
+- What it is:
+  Client-side routing solution for React.
+- Where used:
+  App/page navigation structure.
+- Impact on your project:
+  Enables multi-page app behavior (Dashboard, Tickets, Team, Settings, Auth pages) in SPA form.
+
+4. React Query (@tanstack/react-query)
+- What it is:
+  Server-state fetching/caching layer.
+- Where used:
+  API-backed pages and settings model health polling.
+- Impact on your project:
+  Simplifies loading/error states, caching, refetching, and optimistic UX patterns.
+
+5. Axios
+- What it is:
+  HTTP client library.
+- Where used:
+  src/services/api.js with grouped APIs.
+- Impact on your project:
+  Centralized request handling, token header management, and standardized API error normalization.
+
+6. Zustand
+- What it is:
+  Lightweight global state manager.
+- Where used:
+  src/store/useStore.js.
+- Impact on your project:
+  Keeps cross-page state like theme and global UI flags simple and predictable.
+
+7. Tailwind CSS + postcss + autoprefixer
+- What it is:
+  Utility-first CSS framework + CSS processing pipeline.
+- Where used:
+  Class-based styling across src/components and src/pages.
+- Impact on your project:
+  Speeds UI development, keeps styles consistent, and reduces custom CSS overhead.
+
+8. Framer Motion
+- What it is:
+  Animation library for React.
+- Where used:
+  Animated transitions in components/pages (modals/transitions/cards).
+- Impact on your project:
+  Improves UI feel and feedback through motion.
+
+9. Recharts
+- What it is:
+  Charting library for React.
+- Where used:
+  Dashboard/analytics visual components.
+- Impact on your project:
+  Converts ticket metrics into readable charts for operational insights.
+
+10. React Hook Form + Yup
+- What it is:
+  Form state/validation stack.
+- Where used:
+  Auth and ticket form pages.
+- Impact on your project:
+  Reduces boilerplate and improves input validation consistency.
+
+AI and Data Intelligence Layer
+1. onnxruntime-node
+- What it is:
+  ONNX inference runtime for Node.js.
+- Where used:
+  backend/utils/mlPredict.js.
+- Impact on your project:
+  Executes local ML predictions quickly without external API dependency.
+
+2. ONNX model artifact (priority_model.onnx)
+- What it is:
+  Serialized ML model file.
+- Where used:
+  Loaded in backend inference path.
+- Impact on your project:
+  Provides deterministic, portable priority prediction behavior in production.
+
+3. Python training stack (scikit-learn + skl2onnx)
+- What it is:
+  Offline model training and export toolchain.
+- Where used:
+  backend/scripts/train.py.
+- Impact on your project:
+  Lets you retrain and regenerate the model artifact as logic/data evolves.
+
+4. @google/generative-ai (Gemini)
+- What it is:
+  Optional LLM API integration.
+- Where used:
+  backend/routes/ai.js for chat and suggestion logic when API key is configured.
+- Impact on your project:
+  Adds assistant capabilities beyond deterministic classifier behavior.
+
+
+6) API and Security Design
+--------------------------
+Backend middleware stack:
+1. helmet for secure headers.
+2. cors allowlist with credentials.
+3. compression for payload reduction.
+4. body parser with request size limits.
+5. express-rate-limit global request throttling.
+
+Security patterns:
+1. JWT route protection via auth middleware.
+2. Validation layer via express-validator.
+3. Centralized error handling for safe responses.
+4. Auth-required AI model health endpoint.
+
+
+7) AI + ML Integration Architecture
+-----------------------------------
+Priority prediction is integrated in ticket create flow:
+1. Frontend sends ticket payload.
+2. Backend ticket controller calls predictPriority(title, description, customerTier).
+3. mlPredict loads ONNX model/session if available.
+4. Prediction output enriches stored ticket fields.
+5. If model unavailable/fails, fallback heuristic ensures continuity.
+
+The system therefore supports both:
+1. Intelligent prediction path (ONNX).
+2. Operational fallback path (rule-based scoring).
+
+
+8) Real-Time Events
+-------------------
+Socket.IO events emitted by backend:
+1. ticket_created
+2. ticket_updated
+3. team-scoped variants using room names team_<teamId>
+
+Usage goal:
+1. Keep dashboards/lists synchronized.
+2. Reduce manual refresh needs for active operators.
+
+
+9) Build, Validation, and Operational Commands
+----------------------------------------------
+Frontend (project root):
+1. npm run dev
+2. npm run lint
+3. npm run build
+4. npm run preview
+
+Backend (backend folder):
+1. npm run dev
+2. npm run start
+3. npm run seed
+4. npm run check:model
+5. node scripts/checkModelHealth.js
+
+Runtime smoke checks:
+1. GET /api/health
+2. GET /api/ai/model-health (with auth token)
+
+
+10) Data and Domain Entities
+---------------------------
+Primary collections:
+1. Users
+2. Teams
+3. Tickets
+4. Ticket comments (embedded/subdocument behavior depending on schema design)
+
+Ticket stores both operational and AI metadata:
+1. Priority and status.
+2. Tags and sentiment.
+3. AI prediction confidence/reasoning.
+4. SLA-oriented estimated resolution fields.
+
+
+11) Production Readiness Notes
+------------------------------
+Strengths:
+1. Clear frontend/backend separation.
+2. Health checks and model health visibility.
+3. Fallback logic for model failure resilience.
+4. Real-time event channel for support operations.
+
+Remaining improvement opportunities:
+1. Add CI workflow for automated lint/build/smoke checks.
+2. Add integration tests for auth + ticket creation + AI route.
+3. Add structured logging and request correlation IDs.
+4. Add backup/restore and migration strategy documentation.
+
+
+12) Final Technical Summary
+---------------------------
+This project uses a layered architecture:
+1. React/Vite/Tailwind for user-facing interface.
+2. Node/Express/Mongoose for API and business logic.
+3. ONNX runtime for local deterministic ML inference.
+4. Optional Gemini for assistant-style AI interactions.
+
+Practical impact:
+1. Fast end-user UI and modern developer workflow.
+2. Scalable API structure with secure middleware patterns.
+3. AI-assisted prioritization with fallback reliability.
+4. Real-time team collaboration via socket events.
+---------------------------
+This repository is a complete full-stack IT ticket system with:
+1. Modern React frontend and API-driven architecture.
+2. Node/Mongo backend with secure middleware.
+3. Local ONNX ML inference for deterministic ticket prioritization.
+4. Operational observability through health endpoints and scripts.
+5. Extensibility for both product features and ML improvements.

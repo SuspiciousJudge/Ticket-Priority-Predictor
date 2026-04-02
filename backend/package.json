@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "check:model": "node scripts/checkModel.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -25,6 +26,7 @@
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^4.0.0",
     "node-cache": "^5.1.2",
+    "onnxruntime-node": "^1.24.3",
     "pdfkit": "^0.18.0",
     "socket.io": "^4.8.3"
   },

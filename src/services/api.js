@@ -100,6 +100,7 @@ export const aiAPI = {
     api.post('/ai/chat', { message, conversationHistory }),
   suggestPriority: (title, description) =>
     api.post('/ai/suggest-priority', { title, description }),
+  modelHealth: () => api.get('/ai/model-health'),
 };
 
 export default api;

@@ -46,6 +46,48 @@ function estimateResolutionTime(priority) {
   }
 }
 
+function buildFallbackPrediction(text, customerTier, sentiment) {
+  let score = 0;
+  if (/enterprise|enterprise customer|enterprise account/.test((customerTier || '').toLowerCase())) score += 20;
+
+  const isCritical = ['crash', 'data loss', 'payment', 'security', 'unauthorized', 'panic', 'deadlock'].some(k => text.includes(k));
+  const isHigh = ['error', 'failed', 'timeout', 'broken', 'down', 'unable'].some(k => text.includes(k));
+
+  if (isCritical) score += 30;
+  else if (isHigh) score += 20;
+
+  score += Math.min(Math.floor(text.length / 50), 20);
+  score = Math.min(Math.max(score, 0), 100);
+
+  let priority = 'Low';
+  if (score >= 60) priority = 'Critical';
+  else if (score >= 40) priority = 'High';
+  else if (score >= 20) priority = 'Medium';
+
+  return {
+    priority,
+    confidence: Math.min(Math.round(score * 0.8 + 10), 95),
+    sentiment,
+    tags: extractTags(text),
+    estimatedTime: estimateResolutionTime(priority),
+    reasoning: `Score ${score} from fallback heuristics`
+  };
+}
+
+function normalizePredictedLabel(value) {
+  const priorityMap = { 0: 'Critical', 1: 'High', 2: 'Medium', 3: 'Low' };
+  const asNumber = Number(value);
+  if (!Number.isNaN(asNumber) && priorityMap[asNumber]) return priorityMap[asNumber];
+
+  const asString = String(value || '').trim().toLowerCase();
+  if (asString === 'critical') return 'Critical';
+  if (asString === 'high') return 'High';
+  if (asString === 'medium') return 'Medium';
+  if (asString === 'low') return 'Low';
+
+  return 'Medium';
+}
+
 async function predictPriority(title, description, customerTier) {
   const text = (title + ' ' + (description || '')).toLowerCase();
   const sentiment = detectSentiment(description);
@@ -53,28 +95,7 @@ async function predictPriority(title, description, customerTier) {
   // Fallback Rule-based if no model
   const sess = await loadModel();
   if (!sess) {
-    let score = 0;
-    if (/enterprise|enterprise customer|enterprise account/.test((customerTier || '').toLowerCase())) score += 20;
-    const isCritical = ['crash', 'data loss', 'payment', 'security', 'unauthorized', 'panic', 'deadlock'].some(k => text.includes(k));
-    const isHigh = ['error', 'failed', 'timeout', 'broken', 'down', 'unable'].some(k => text.includes(k));
-    if (isCritical) score += 30;
-    else if (isHigh) score += 20;
-    score += Math.min(Math.floor(text.length / 50), 20);
-    score = Math.min(Math.max(score, 0), 100);
-    
-    let priority = 'Low';
-    if (score >= 60) priority = 'Critical';
-    else if (score >= 40) priority = 'High';
-    else if (score >= 20) priority = 'Medium';
-    
-    return {
-      priority,
-      confidence: Math.min(Math.round(score * 0.8 + 10), 95),
-      sentiment,
-      tags: extractTags(text),
-      estimatedTime: estimateResolutionTime(priority),
-      reasoning: `Score ${score} from fallback heuristics`
-    };
+    return buildFallbackPrediction(text, customerTier, sentiment);
   }
 
   // ONNX Inference
@@ -85,22 +106,18 @@ async function predictPriority(title, description, customerTier) {
 
   try {
     const inputTensor = new ort.Tensor('float32', Float32Array.from([sentimentScore, isEnterprise, hasCritical, descLen]), [1, 4]);
-    const feeds = { float_input: inputTensor };
-    const results = await sess.run(feeds);
-    // output label is normally output_label or similar, skl2onnx standard is output_label
-    const labelData = results[sess.outputNames[0]].data; 
-    const val = labelData[0]; // 0=Critical, 1=High, 2=Medium, 3=Low
-    
-    const priorityMap = { 0: 'Critical', 1: 'High', 2: 'Medium', 3: 'Low' };
-    const predictedPriority = priorityMap[val] || 'Medium';
+    const inputName = sess.inputNames[0] || 'float_input';
+    const feeds = { [inputName]: inputTensor };
+    const labelOutputName = sess.outputNames[0];
+    const results = await sess.run(feeds, [labelOutputName]);
+    const labelOutput = results[labelOutputName];
+    const rawLabel = labelOutput && labelOutput.data ? labelOutput.data[0] : undefined;
+    const predictedPriority = normalizePredictedLabel(rawLabel);
 
-    // To get probabilities, the 2nd output from RF is usually probabilities
-    let confidence = 75; // Default if prob not available
-    if (sess.outputNames.length > 1) {
-        const probMap = results[sess.outputNames[1]].data; // dict of probabilties or tensor
-        // skl2onnx outputs sequence of maps. We just estimate confidence based on generic logic
-        confidence = 85 + Math.floor(Math.random() * 10);
-    }
+    // Some skl2onnx models expose probability as a map/sequence output type,
+    // which may be unsupported by onnxruntime-node in certain builds.
+    // We fetch label output only and use a stable default confidence.
+    const confidence = 80;
     
     return {
       priority: predictedPriority,
@@ -108,20 +125,32 @@ async function predictPriority(title, description, customerTier) {
       sentiment,
       tags: extractTags(text),
       estimatedTime: estimateResolutionTime(predictedPriority),
-      reasoning: "Predicted by ONNX Random Forest model"
+      reasoning: `Predicted by ONNX Random Forest model (${labelOutputName})`
     };
 
   } catch (err) {
     console.error("ONNX inference failed:", err);
+    const fallback = buildFallbackPrediction(text, customerTier, sentiment);
     return {
-      priority: 'Medium',
-      confidence: 50,
-      sentiment,
-      tags: extractTags(text),
-      estimatedTime: estimateResolutionTime('Medium'),
-      reasoning: "Inference failed, fallback to Medium"
+      ...fallback,
+      reasoning: `${fallback.reasoning}; ONNX inference failed`
     };
   }
 }
 
-module.exports = { predictPriority, detectSentiment, extractTags };
+async function getModelHealth() {
+  const modelExists = fs.existsSync(onnxModelPath);
+  const runtimeAvailable = Boolean(ort);
+  const sess = await loadModel();
+
+  return {
+    modelPath: onnxModelPath,
+    modelExists,
+    runtimeAvailable,
+    modelLoaded: Boolean(sess),
+    inputNames: sess ? sess.inputNames : [],
+    outputNames: sess ? sess.outputNames : []
+  };
+}
+
+module.exports = { predictPriority, detectSentiment, extractTags, getModelHealth };

@@ -3,8 +3,19 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Ticket = require('../models/Ticket');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { getModelHealth } = require('../utils/mlPredict');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// GET /api/ai/model-health
+router.get('/model-health', auth, async (req, res, next) => {
+  try {
+    const health = await getModelHealth();
+    return res.json({ success: true, data: health });
+  } catch (err) {
+    return next(err);
+  }
+});
 
 // POST /api/ai/chat
 router.post('/chat', auth, async (req, res, next) => {

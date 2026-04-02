@@ -1,0 +1,326 @@
+AI Model Documentation - Complete Technical Detail
+==================================================
+
+0) Scope of This Document
+-------------------------
+This document explains the ML system end to end, including:
+1. Exactly what model type is used.
+2. How training data is generated.
+3. How training and export are done.
+4. How inference is executed in Node.js.
+5. How fallback rules work.
+6. Why design decisions were made.
+7. Example inputs/outputs and edge cases.
+
+
+1) Problem Definition
+---------------------
+Task type:
+1. Supervised multiclass classification.
+
+Goal:
+1. Predict one priority class for each ticket:
+   - Critical
+   - High
+   - Medium
+   - Low
+
+Input domain:
+1. Ticket text fields (title + description).
+2. Customer tier context.
+
+Output domain:
+1. Predicted priority label.
+2. Confidence estimate.
+3. Supplemental metadata (sentiment, tags, ETA, reasoning).
+
+
+2) Model Type and Algorithm
+---------------------------
+Primary model type:
+1. Random Forest Classifier (from scikit-learn), exported to ONNX.
+
+Why Random Forest here:
+1. Handles small numerical feature sets well.
+2. Stable and easy to export to ONNX.
+3. Fast inference for backend API usage.
+4. Good baseline for tabular feature engineering.
+
+Learning paradigm:
+1. Supervised learning.
+2. Multiclass classification with class IDs 0..3.
+
+Class mapping used:
+1. 0 -> Critical
+2. 1 -> High
+3. 2 -> Medium
+4. 3 -> Low
+
+
+3) Files Responsible for ML Lifecycle
+-------------------------------------
+backend/scripts/train.py
+1. Generates synthetic training dataset.
+2. Trains RandomForestClassifier.
+3. Converts model using skl2onnx.
+4. Writes backend/models/priority_model.onnx.
+
+backend/models/priority_model.onnx
+1. Portable serialized model artifact used in production inference.
+
+backend/utils/mlPredict.js
+1. Loads ONNX runtime and model.
+2. Performs feature extraction.
+3. Runs inference.
+4. Normalizes output label.
+5. Applies fallback heuristics when needed.
+6. Exposes model health metadata.
+
+backend/scripts/checkModel.js
+1. Smoke test for inference output.
+
+backend/scripts/checkModelHealth.js
+1. Smoke test for runtime/model/session availability details.
+
+backend/routes/ai.js
+1. Exposes ML-related endpoints:
+   - suggest-priority
+   - model-health
+
+
+4) Feature Engineering Used in Inference
+----------------------------------------
+The ONNX model receives exactly 4 numeric features in order:
+
+Feature 1: sentimentScore
+1. Derived from simple keyword sentiment detector.
+2. Mapping:
+   - Angry/frustrated-like language -> 1.0
+   - Happy/positive language -> -1.0
+   - Neutral/unknown -> 0.0
+
+Feature 2: isEnterprise
+1. Derived from customer tier string.
+2. Mapping:
+   - enterprise-like string -> 1.0
+   - otherwise -> 0.0
+
+Feature 3: hasCritical
+1. Keyword-based criticality detector from title+description.
+2. Checks terms such as crash, data loss, payment, security.
+3. Mapping:
+   - critical keyword found -> 1.0
+   - otherwise -> 0.0
+
+Feature 4: descLen
+1. Length of combined ticket text.
+2. Cast to float.
+
+Tensor format:
+1. Data type: float32.
+2. Shape: [1, 4].
+
+
+5) Training Pipeline in Detail
+------------------------------
+Training script behavior (backend/scripts/train.py):
+
+Step 1: Synthetic data generation
+1. Sets random seed for reproducibility.
+2. Creates N synthetic samples.
+3. Generates feature columns:
+   - sentiment_scores
+   - is_enterprise
+   - has_critical
+   - desc_len
+
+Step 2: Label construction
+1. Computes a weighted score from features.
+2. Applies threshold rules to assign class ID 0..3.
+3. Produces multiclass labels for supervised training.
+
+Step 3: Model fitting
+1. Initializes RandomForestClassifier (n_estimators and max_depth configured in script).
+2. Fits on generated feature matrix X and labels y.
+
+Step 4: ONNX export
+1. Defines ONNX initial type with FloatTensorType([None, 4]).
+2. Converts sklearn model to ONNX graph using convert_sklearn.
+3. Saves output as backend/models/priority_model.onnx.
+
+
+6) Inference Pipeline in Detail
+-------------------------------
+Runtime sequence in backend/utils/mlPredict.js:
+
+Phase A: Runtime and model loading
+1. Attempt require('onnxruntime-node').
+2. Build model path.
+3. Create and cache InferenceSession when first needed.
+4. Reuse cached session for later calls.
+
+Phase B: Input preprocessing
+1. Normalize text to lowercase.
+2. Detect sentiment.
+3. Detect enterprise flag.
+4. Detect critical keyword flag.
+5. Compute text length.
+
+Phase C: Model execution
+1. Create ort.Tensor(float32, [features], [1,4]).
+2. Resolve input name from session.inputNames[0].
+3. Execute session.run(feeds, [labelOutputName]).
+4. Read output label tensor.
+
+Phase D: Output post-processing
+1. Normalize numeric/string label to canonical priority string.
+2. Set confidence to stable value (80) for current runtime compatibility path.
+3. Add sentiment/tags/estimated resolution/reasoning fields.
+
+
+7) Why Only Label Output Is Requested
+-------------------------------------
+Observed behavior:
+1. Some ONNX builds emit probability output in non-tensor map/sequence form.
+2. onnxruntime-node may fail on unsupported non-tensor output shapes in certain builds.
+
+Design choice:
+1. Request only label output tensor from model run.
+2. Avoid runtime crashes while preserving deterministic classification.
+3. Keep service stable and production-safe.
+
+Trade-off:
+1. Probability-calibrated confidence is not fully used currently.
+2. Confidence is deterministic fixed value in ONNX path.
+
+
+8) Fallback Heuristic Classifier (Resilience Layer)
+---------------------------------------------------
+If model cannot load or inference throws error:
+1. System uses rule-based scoring fallback.
+
+Scoring signals:
+1. +20 for enterprise tier.
+2. +30 if critical keyword set matched.
+3. +20 if only high-severity keyword set matched.
+4. +length contribution up to +20.
+
+Threshold to class:
+1. >= 60 -> Critical
+2. >= 40 -> High
+3. >= 20 -> Medium
+4. else -> Low
+
+Why fallback matters:
+1. Maintains uninterrupted ticket creation.
+2. Prevents AI dependency from blocking operations.
+3. Provides explainable reasoning string with score details.
+
+
+9) Health Monitoring and Observability
+--------------------------------------
+Model health endpoint:
+1. GET /api/ai/model-health (auth-protected)
+
+Returned fields:
+1. modelPath
+2. modelExists
+3. runtimeAvailable
+4. modelLoaded
+5. inputNames
+6. outputNames
+
+Additional runtime scripts:
+1. npm run check:model
+2. node scripts/checkModelHealth.js
+
+Frontend integration:
+1. Settings page system tab displays model health.
+2. Manual refresh and timed polling supported.
+
+
+10) Example Walkthroughs
+------------------------
+Example A: Critical incident
+Input:
+1. title: Payment API crash in production
+2. description: Enterprise client reports data loss and security issue
+3. customerTier: Enterprise
+
+Feature interpretation:
+1. enterprise flag likely 1.0
+2. critical flag likely 1.0
+3. text length moderate/high
+
+Expected class tendency:
+1. Critical
+
+Expected metadata:
+1. tags include payment/api/crash/security
+2. estimatedTime likely 4h-12h
+
+
+Example B: Normal request
+Input:
+1. title: Need export button color update
+2. description: Please align export icon with design style
+3. customerTier: Standard
+
+Feature interpretation:
+1. enterprise flag 0.0
+2. critical flag 0.0
+3. lower severity text
+
+Expected class tendency:
+1. Low or Medium depending on text length and rule/model interaction.
+
+
+Example C: Runtime failure case
+Condition:
+1. ONNX runtime missing or model file absent.
+
+Behavior:
+1. Fallback heuristic automatically used.
+2. API still returns prediction payload and reasoning.
+
+
+11) Limitations and Future Improvements
+---------------------------------------
+Current limitations:
+1. Features are intentionally simple and keyword-driven.
+2. Training data is synthetic in current script.
+3. Confidence is fixed in ONNX execution path.
+4. No advanced NLP embedding model is used yet.
+
+Recommended upgrades:
+1. Train on real historical tickets with validated labels.
+2. Add richer features:
+   - category
+   - customer SLA tier
+   - historical assignee/team load
+   - issue recurrence
+3. Add calibration method (Platt scaling or isotonic) for confidence.
+4. Introduce model versioning and experiment tracking.
+5. Add drift monitoring and periodic retraining pipeline.
+6. Add offline evaluation report (precision/recall/F1 per class).
+
+
+12) Operational Safety Guarantees
+---------------------------------
+This ML integration is built with safety first:
+1. Deterministic local inference (no external dependency for core prediction).
+2. Health visibility for model/runtime/session state.
+3. Graceful fallback if model path fails.
+4. No single AI failure can block ticket creation flow.
+
+
+13) Final Technical Summary
+---------------------------
+Applied ML approach:
+1. Supervised multiclass classification.
+2. RandomForestClassifier model trained in Python.
+3. Exported to ONNX.
+4. Inference served in Node.js using onnxruntime-node.
+5. Rule-based fallback for high availability.
+
+This gives a practical, production-friendly AI layer that is fast, robust, and easy to operate.
