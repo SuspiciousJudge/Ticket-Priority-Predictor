@@ -35,7 +35,6 @@ exports.register = async (req, res, next) => {
       },
     });
   } catch (err) {
-    // Catch Mongoose duplicate key errors
     if (err.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -43,7 +42,6 @@ exports.register = async (req, res, next) => {
         fieldErrors: { email: 'Email already in use. Try logging in instead.' },
       });
     }
-    // Catch Mongoose validation errors
     if (err.name === 'ValidationError') {
       const fieldErrors = {};
       Object.keys(err.errors).forEach((field) => {
@@ -91,10 +89,24 @@ exports.logout = async (req, res) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
+    // Always return success to prevent email enumeration
     if (!user) return res.status(200).json({ success: true, message: 'If that email exists, we sent reset instructions' });
-    const token = crypto.randomBytes(20).toString('hex');
-    res.json({ success: true, message: 'Password reset token (dev only)', data: { token } });
+
+    // Generate a real reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
+    await user.save();
+
+    // In production, send email with reset link. For dev, return the token.
+    res.json({
+      success: true,
+      message: 'Password reset token generated (dev mode — in production this would be emailed)',
+      data: { resetToken },
+    });
   } catch (err) { next(err); }
 };
 
@@ -102,8 +114,29 @@ exports.resetPassword = async (req, res, next) => {
   try {
     const { token } = req.params;
     const { password } = req.body;
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+
+    // Hash the incoming token and compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+    }
+
+    // Update password and clear reset fields
     const salt = await bcrypt.genSalt(SALT_ROUNDS);
-    const hashed = await bcrypt.hash(password, salt);
-    res.json({ success: true, message: 'Password reset (demo) - implement token mapping in production' });
+    user.password = await bcrypt.hash(password, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.json({ success: true, message: 'Password has been reset successfully' });
   } catch (err) { next(err); }
 };

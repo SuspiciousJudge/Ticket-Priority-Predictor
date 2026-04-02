@@ -1,14 +1,11 @@
 import axios from 'axios';
 
-// Use Vite env var prefix `VITE_` in the frontend. In development create `.env` with
-// `VITE_API_BASE_URL=http://localhost:5000/api` or rely on the fallback below.
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 const api = axios.create({ baseURL: API_URL, withCredentials: true });
 
 /**
  * Store token in localStorage (remember me) or sessionStorage (session only).
- * Call with `null` to clear.
  */
 export const setAuthToken = (token, remember = true) => {
   if (token) {
@@ -25,14 +22,11 @@ export const setAuthToken = (token, remember = true) => {
   }
 };
 
-/**
- * Retrieve a stored token from either storage.
- */
 export const getStoredToken = () => {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
-// Response interceptor for error handling
+// Response interceptor
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -40,9 +34,6 @@ api.interceptors.response.use(
     const message = data.message || err.message;
 
     if (err.response?.status === 401) {
-      // Clear stored tokens so ProtectedRoute redirects to /login on next render.
-      // Do NOT hard-redirect with window.location — that causes a full page reload,
-      // loses React state, and can loop with ProtectedRoute's own 401 handling.
       localStorage.removeItem('token');
       sessionStorage.removeItem('token');
       delete api.defaults.headers.common['Authorization'];
@@ -75,6 +66,7 @@ export const ticketsAPI = {
   addComment: (id, data) => api.post(`/tickets/${id}/comments`, data),
   getStats: () => api.get('/tickets/stats'),
   getSimilar: (id) => api.get(`/tickets/${id}/similar`),
+  exportCsv: () => api.get('/tickets/export-csv', { responseType: 'blob' }),
 };
 
 export const teamsAPI = {
@@ -93,6 +85,21 @@ export const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   getTickets: (id) => api.get(`/users/${id}/tickets`),
   getPerformance: (id) => api.get(`/users/${id}/performance`),
+};
+
+// File upload API
+export const uploadAPI = {
+  upload: (formData) => api.post('/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
+
+// AI Assistant API
+export const aiAPI = {
+  chat: (message, conversationHistory = []) =>
+    api.post('/ai/chat', { message, conversationHistory }),
+  suggestPriority: (title, description) =>
+    api.post('/ai/suggest-priority', { title, description }),
 };
 
 export default api;

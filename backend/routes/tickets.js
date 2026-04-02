@@ -4,6 +4,7 @@ const ticketController = require('../controllers/ticketController');
 const auth = require('../middleware/auth');
 
 router.get('/stats', auth, ticketController.stats);
+router.get('/export-csv', auth, ticketController.exportCsv);
 router.get('/:id/similar', auth, ticketController.similar);
 router.get('/:id', auth, ticketController.getById);
 router.post('/:id/comments', auth, ticketController.addComment);

@@ -38,6 +38,7 @@ const TicketSchema = new mongoose.Schema({
   confidence: { type: Number },
   estimatedTime: String,
   resolutionTime: Number,
+  slaDeadline: { type: Date },
   affectedUsers: Number,
   tags: [String],
   attachments: [AttachmentSchema],
@@ -45,5 +46,12 @@ const TicketSchema = new mongoose.Schema({
   aiPredictions: AiPredSchema,
   similarTickets: [SimilarSchema],
 }, { timestamps: true });
+
+// Indexes for query performance
+TicketSchema.index({ team: 1, status: 1 });
+TicketSchema.index({ priority: 1 });
+TicketSchema.index({ createdAt: -1 });
+TicketSchema.index({ assignee: 1, status: 1 });
+TicketSchema.index({ title: 'text', description: 'text' });
 
 module.exports = mongoose.model('Ticket', TicketSchema);

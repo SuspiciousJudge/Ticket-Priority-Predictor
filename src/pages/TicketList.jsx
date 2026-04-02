@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Filter, LayoutGrid, List, Plus, Columns3, ChevronLeft, ChevronRight, Download, Trash2, RefreshCw, CheckSquare, Square, X } from 'lucide-react';
 import Card from '../components/common/Card';
@@ -18,9 +18,12 @@ export default function TicketList() {
     const navigate = useNavigate();
     const { currentTeam } = useStore();
 
+    const [searchParams] = useSearchParams();
+    const initialSearch = searchParams.get('search') || '';
+
     const [viewMode, setViewMode] = useState('grid');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [searchQuery, setSearchQuery] = useState(initialSearch);
+    const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
     const [selectedPriority, setSelectedPriority] = useState([]);
     const [selectedStatus, setSelectedStatus] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -76,20 +79,22 @@ export default function TicketList() {
         }
     };
 
-    const handleExport = () => {
-        const csv = ['ID,Title,Priority,Status,Category,Assignee,Created'];
-        tickets.forEach(t => {
-            const assigneeName = t.assignee?.name || 'Unassigned';
-            csv.push(`${t.ticketId},"${t.title}",${t.priority},${t.status},${t.category},${assigneeName},${t.createdAt}`);
-        });
-        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'tickets-export.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success(`Exported ${tickets.length} tickets from current view`);
+    const handleExport = async () => {
+        try {
+            const toastId = toast.loading('Exporting tickets to CSV...');
+            const res = await ticketsAPI.exportCsv();
+            const blob = new Blob([res.data], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tickets-export.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Tickets exported successfully!', { id: toastId });
+        } catch (e) {
+            console.error(e);
+            toast.error('Export failed');
+        }
     };
 
     const handleBulkDelete = () => {
@@ -315,13 +320,10 @@ export default function TicketList() {
                                         </div>
                                         <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
                                             <span>{formatRelativeTime(ticket.createdAt)}</span>
-                                            {ticket.aiPredictions?.confidence && (
-                                                <div className="flex items-center space-x-1">
-                                                    <div className="w-12 h-1.5 bg-gray-200 dark:bg-dark-border rounded-full overflow-hidden">
-                                                        <div className="h-full bg-gradient-success rounded-full" style={{ width: `${ticket.aiPredictions.confidence}%` }} />
-                                                    </div>
-                                                    <span>{ticket.aiPredictions.confidence}%</span>
-                                                </div>
+                                            {ticket.slaDeadline && (
+                                                <span className={cn("font-medium px-2 py-0.5 rounded", new Date(ticket.slaDeadline) < new Date() ? "bg-danger-100 text-danger-700" : "bg-gray-100 dark:bg-dark-border text-gray-700 dark:text-gray-300")}>
+                                                    SLA: {new Date(ticket.slaDeadline).toLocaleDateString()}
+                                                </span>
                                             )}
                                         </div>
                                     </Card>

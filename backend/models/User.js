@@ -9,6 +9,8 @@ const UserSchema = new mongoose.Schema({
   expertise: [{ type: String }],
   team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
   isActive: { type: Boolean, default: true },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

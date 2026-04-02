@@ -4,9 +4,14 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Breadcrumbs from '../common/Breadcrumbs';
 import PageTransition from '../common/PageTransition';
+import AIAssistantWidget from '../common/AIAssistantWidget';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import useTeamFilter from '../../hooks/useTeamFilter';
+
+import { useEffect } from 'react';
+import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 
 function PageLoader() {
     return (
@@ -22,9 +27,36 @@ function PageLoader() {
     );
 }
 
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL 
+    ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
+    : 'http://localhost:5000';
+
 export default function Layout() {
-    const { sidebarCollapsed } = useStore();
+    const { sidebarCollapsed, currentTeam } = useStore();
     useTeamFilter();
+
+    useEffect(() => {
+        const socket = io(SOCKET_URL, { withCredentials: true });
+        
+        if (currentTeam?.id) {
+            socket.emit('join_team', currentTeam.id);
+        }
+
+        socket.on('ticket_created', (ticket) => {
+            // Prevent self-toasts? Maybe optional, we just notify
+            // The team event might be better to listen to if we are team scoped
+        });
+
+        socket.on('team_ticket_created', (ticket) => {
+            toast(`New Ticket: ${ticket.title}`, { icon: '🤖' });
+        });
+        
+        socket.on('team_ticket_updated', (ticket) => {
+            toast.success(`Ticket Updated: ${ticket.ticketId}`);
+        });
+
+        return () => socket.disconnect();
+    }, [currentTeam?.id]);
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
@@ -45,6 +77,7 @@ export default function Layout() {
                     </Suspense>
                 </main>
             </div>
+            <AIAssistantWidget />
         </div>
     );
 }

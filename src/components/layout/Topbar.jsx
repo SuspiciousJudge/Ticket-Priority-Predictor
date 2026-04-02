@@ -271,9 +271,14 @@ export default function Topbar() {
                             <Search className="absolute left-3 w-4 h-4 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search tickets..."
+                                placeholder="Search tickets (press Enter)..."
                                 onFocus={() => setSearchFocused(true)}
                                 onBlur={() => setSearchFocused(false)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                        navigate(`/tickets?search=${encodeURIComponent(e.target.value.trim())}`);
+                                    }
+                                }}
                                 className={cn(
                                     'w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg',
                                     'bg-gray-50 dark:bg-dark-bg focus:bg-white dark:focus:bg-dark-surface',

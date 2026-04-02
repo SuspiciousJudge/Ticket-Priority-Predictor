@@ -8,7 +8,7 @@ import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { useStore } from '../store/useStore';
-import { ticketsAPI } from '../services/api';
+import { ticketsAPI, uploadAPI, aiAPI } from '../services/api';
 import { cn, generateId } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -57,20 +57,32 @@ export default function CreateTicket() {
 
     const submitting = createTicketMutation.isPending;
 
-    // Simulate AI prediction as user types
+    // AI prediction as user types — calls real backend
     useEffect(() => {
         if (watchTitle?.length > 10 || watchDescription?.length > 20) {
-            const timer = setTimeout(() => {
-                const randomPriority = priorities[Math.floor(Math.random() * priorities.length)];
-                const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-                setAiPrediction({
-                    priority: randomPriority,
-                    confidence: Math.floor(Math.random() * 20) + 78,
-                    category: randomCategory,
-                    estimatedTime: `${Math.floor(Math.random() * 6) + 2}-${Math.floor(Math.random() * 6) + 8} hours`,
-                });
-                setShowSimilar(true);
-            }, 800);
+            const timer = setTimeout(async () => {
+                try {
+                    const res = await aiAPI.suggestPriority(watchTitle || '', watchDescription || '');
+                    const data = res.data?.data;
+                    if (data) {
+                        setAiPrediction({
+                            priority: data.priority || 'Medium',
+                            confidence: data.confidence || 70,
+                            category: data.category || 'Support',
+                            estimatedTime: data.estimatedTime || '2-8 hours',
+                        });
+                    }
+                    setShowSimilar(true);
+                } catch {
+                    // Fallback to simple heuristic if AI fails
+                    setAiPrediction({
+                        priority: 'Medium',
+                        confidence: 50,
+                        category: 'Support',
+                        estimatedTime: '2-8 hours',
+                    });
+                }
+            }, 1200);
             return () => clearTimeout(timer);
         } else {
             setAiPrediction(null);
@@ -100,16 +112,38 @@ export default function CreateTicket() {
 
     const removeFile = (id) => setFiles(prev => prev.filter(f => f.id !== id));
 
-    const onSubmit = (data) => {
-        const payload = {
-            title: data.title,
-            description: data.description,
-            category: data.category || aiPrediction?.category,
-            customerTier: data.customerTier,
-            tags: data.tags ? data.tags.split(',').map(t => t.trim()) : [],
-            team: currentTeam?.id || undefined,
-        };
-        createTicketMutation.mutate(payload);
+    const onSubmit = async (data) => {
+        try {
+            // Upload files first if any
+            let attachments = [];
+            if (files.length > 0) {
+                const formData = new FormData();
+                files.forEach(f => formData.append('files', f.file));
+                try {
+                    const uploadRes = await uploadAPI.upload(formData);
+                    attachments = (uploadRes.data?.data || []).map(f => ({
+                        filename: f.filename,
+                        url: f.url,
+                    }));
+                } catch (uploadErr) {
+                    console.warn('File upload failed, creating ticket without attachments:', uploadErr);
+                    toast.error('File upload failed, but ticket will still be created.');
+                }
+            }
+
+            const payload = {
+                title: data.title,
+                description: data.description,
+                category: data.category || aiPrediction?.category,
+                customerTier: data.customerTier,
+                tags: data.tags ? data.tags.split(',').map(t => t.trim()) : [],
+                team: currentTeam?.id || undefined,
+                attachments,
+            };
+            createTicketMutation.mutate(payload);
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     const getPriorityBg = (p) => {
