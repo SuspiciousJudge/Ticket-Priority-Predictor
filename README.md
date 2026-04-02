@@ -55,6 +55,11 @@ This project includes:
 
 Base backend URL (default): http://localhost:5000/api
 
+Dev origin compatibility:
+
+- Frontend can run on either http://localhost:5173 or http://127.0.0.1:5173
+- Backend CORS allowlist supports localhost and 127.0.0.1 dev origins
+
 Main route groups:
 
 - /api/auth
@@ -199,6 +204,7 @@ Detailed docs:
 - Added frontend chunk-splitting strategy in Vite config.
 - Updated ESLint config for mixed frontend/backend repository setup.
 - Improved env-file security handling and removed backend/.env from tracked history.
+- Fixed CORS sign-in issue by allowing 127.0.0.1 dev origins in backend allowlist.
 
 ## Recommended Next Steps
 
