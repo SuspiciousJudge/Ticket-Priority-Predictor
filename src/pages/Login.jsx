@@ -28,7 +28,7 @@ export default function Login() {
             setAuthToken(token, rememberMe);
             toast.success('Welcome back!');
             queryClient.invalidateQueries({ queryKey: ['me'] });
-            navigate('/');
+            navigate('/dashboard');
         },
         onError: (err) => {
             if (err.fieldErrors) {

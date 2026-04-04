@@ -46,7 +46,7 @@ export default function ProtectedRoute({ children, roles = [] }) {
   }
 
   if (roles.length > 0 && !roles.includes(userResponse.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children ? children : <Outlet />;

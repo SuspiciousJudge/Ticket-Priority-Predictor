@@ -69,7 +69,7 @@ export default function SignUp() {
             setAuthToken(token, true);
             toast.success('Account created — welcome!');
             queryClient.invalidateQueries({ queryKey: ['me'] });
-            navigate('/');
+            navigate('/dashboard');
         },
         onError: (err) => {
             // Map backend field-level errors to react-hook-form

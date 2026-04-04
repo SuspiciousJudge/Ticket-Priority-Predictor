@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 
 const routeLabels = {
     '': 'Dashboard',
+    dashboard: 'Dashboard',
     tickets: 'All Tickets',
     create: 'Create Ticket',
     analytics: 'Analytics',
@@ -27,7 +28,7 @@ export default function Breadcrumbs() {
 
     return (
         <nav className="flex items-center space-x-1.5 text-sm px-6 py-3">
-            <Link to="/" className="flex items-center text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+            <Link to="/dashboard" className="flex items-center text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                 <Home className="w-4 h-4" />
             </Link>
             {crumbs.map((crumb, i) => (

@@ -88,6 +88,20 @@ select {
   transition: all 0.2s ease;
 }
 
+@keyframes logo-marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-logo-marquee {
+  animation: logo-marquee 24s linear infinite;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
 

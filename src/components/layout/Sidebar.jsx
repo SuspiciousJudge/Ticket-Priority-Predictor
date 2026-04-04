@@ -17,7 +17,7 @@ import { cn } from '../../lib/utils';
 import { authAPI } from '../../services/api';
 
 const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Inbox, label: 'All Tickets', path: '/tickets' },
     { icon: Plus, label: 'Create Ticket', path: '/create' },
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },
