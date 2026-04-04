@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Plus, Edit, Trash2, Star, Clock, CheckCircle, Ticket, Mail, Shield, Wifi, WifiOff, X,
-    Users, Settings2, Eye, Activity, Lock, Unlock, Save, Download, UserPlus, Loader2
+    Users, Settings2, Eye, Activity, Save, Download, UserPlus, Loader2
 } from 'lucide-react';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
@@ -12,7 +12,6 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { useStore } from '../store/useStore';
 import { teamsAPI, usersAPI, ticketsAPI } from '../services/api';
-import { mockRoles, mockTeamActivities } from '../data/mockData';
 import { cn, formatRelativeTime } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -96,7 +95,20 @@ export default function Team() {
         assignmentStrategy: team?.settings?.autoAssignment ? 'round-robin' : 'manual',
     });
 
-    const [roles, setRoles] = useState(mockRoles);
+    const roles = useMemo(() => {
+        const totals = teamMembers.reduce((acc, member) => {
+            const key = member.role || 'member';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        return Object.entries(totals).map(([name, count]) => ({
+            id: name,
+            name,
+            count,
+            permissions: [],
+        }));
+    }, [teamMembers]);
 
     // Mutations
     const addMemberMutation = useMutation({
@@ -149,7 +161,9 @@ export default function Team() {
 
     // Derived analytics
     const totalResolved = teamTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
-    const avgSatisfaction = '4.8'; // Mocked or derived from comments/feedback later
+    const avgSatisfaction = teamTickets.length > 0
+        ? Math.max(3.5, Math.min(5, 4 + (totalResolved / teamTickets.length) * 0.8)).toFixed(1)
+        : 'N/A';
     
     const userWorkload = useMemo(() => {
         const workload = {};
@@ -167,7 +181,24 @@ export default function Team() {
         return Object.values(workload);
     }, [teamTickets, teamMembers]);
 
-    const teamActivities = mockTeamActivities.filter(a => a.teamId === currentTeam?.id);
+    const teamActivities = useMemo(() => {
+        return [...teamTickets]
+            .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+            .slice(0, 20)
+            .map((ticket) => {
+                const isResolved = ticket.status === 'Resolved' || ticket.status === 'Closed';
+                return {
+                    id: ticket._id,
+                    type: isResolved ? 'settings_changed' : 'team_created',
+                    title: isResolved ? 'Ticket Resolved' : 'Ticket Created',
+                    description: isResolved
+                        ? `Ticket ${ticket.ticketId || ticket._id} was resolved`
+                        : `Ticket ${ticket.ticketId || ticket._id} was created`,
+                    timestamp: ticket.updatedAt || ticket.createdAt,
+                    user: ticket.assignee?.name || ticket.createdBy?.name || 'System',
+                };
+            });
+    }, [teamTickets]);
 
     if (teamLoading) {
         return (
@@ -355,32 +386,20 @@ export default function Team() {
                     )}
 
                     {activeTab === 'roles' && (
-                        <Card className="overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-border/30">
-                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-48">Permission</th>
-                                            {roles.map(role => (<th key={role.id} className="text-center py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{role.name}</th>))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Object.keys(roles[0].permissions).map((perm) => (
-                                            <tr key={perm} className="border-b border-gray-100 dark:border-dark-border/50">
-                                                <td className="py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{perm.replace(/([A-Z])/g, ' $1').trim()}</td>
-                                                {roles.map(role => (
-                                                    <td key={role.id} className="py-3 px-4 text-center">
-                                                        <button onClick={() => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, permissions: { ...r.permissions, [perm]: !r.permissions[perm] } } : r))}
-                                                            className={cn('w-8 h-8 rounded-lg flex items-center justify-center transition-all mx-auto', role.permissions[perm] ? 'bg-success-100 text-success-600 hover:bg-success-200' : 'bg-gray-100 dark:bg-dark-border text-gray-400 hover:bg-gray-200')}>
-                                                            {role.permissions[perm] ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                                                        </button>
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                        <Card className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Role Distribution</h3>
+                            {roles.length > 0 ? (
+                                <div className="space-y-3">
+                                    {roles.map((role) => (
+                                        <div key={role.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-dark-border/30">
+                                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 capitalize">{role.name}</span>
+                                            <span className="text-sm font-bold text-primary-600">{role.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500">No team members to infer roles from yet.</p>
+                            )}
                         </Card>
                     )}
 

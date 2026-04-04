@@ -149,7 +149,41 @@ Frontend default: http://localhost:5173
 - npm run dev: start backend with nodemon
 - npm run seed: seed database
 - npm run check:model: run model inference smoke test
+- npm run import:data: import real ticket dataset (JSON or CSV) into MongoDB
 - node scripts/checkModelHealth.js: print model runtime health details
+
+## Dataset Import (Real Data)
+
+Importer file:
+
+- backend/scripts/importData.js
+
+Supports input formats:
+
+- JSON: tickets array or top-level array
+- CSV: flexible header aliases (including ITSM-style columns)
+
+Run importer:
+
+```bash
+cd backend
+npm run import:data -- --file=C:/absolute/path/to/tickets.json
+```
+
+or
+
+```bash
+cd backend
+npm run import:data -- --file=C:/absolute/path/to/training_data.csv
+```
+
+Importer behavior:
+
+- Clears existing tickets collection
+- Normalizes priority/status/category/tier fields
+- Maps assignees to existing users or creates imported agent users
+- Inserts tickets and syncs indexes
+- Prints import totals, priority distribution, and top categories
 
 ## Real-Time Events
 
@@ -205,6 +239,11 @@ Detailed docs:
 - Updated ESLint config for mixed frontend/backend repository setup.
 - Improved env-file security handling and removed backend/.env from tracked history.
 - Fixed CORS sign-in issue by allowing 127.0.0.1 dev origins in backend allowlist.
+- Added real-data importer supporting JSON and CSV schema aliases.
+- Reworked analytics/dashboard stats to be MongoDB-backed and team-scoped.
+- Added cosine-similarity based similar tickets endpoint.
+- Added Similar Tickets section in Ticket Detail with clickable navigation.
+- Removed active frontend mock-data dependencies from analytics/team/ticket creation flows.
 
 ## Recommended Next Steps
 

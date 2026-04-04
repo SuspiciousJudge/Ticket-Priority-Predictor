@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { Download, TrendingUp, TrendingDown, Ticket, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { mockAnalyticsData } from '../data/mockData';
 import { useStore } from '../store/useStore';
 import { ticketsAPI } from '../services/api';
 import { cn } from '../lib/utils';
@@ -55,10 +54,10 @@ export default function Analytics() {
 
     const { data: statsResponse, isLoading } = useQuery({
         queryKey: ['stats', currentTeam?.id],
-        queryFn: ticketsAPI.getStats,
+        queryFn: () => ticketsAPI.getStats({ team: currentTeam?.id || undefined }),
     });
 
-    const stats = statsResponse?.data;
+    const stats = statsResponse?.data?.data || {};
 
     const totalTickets = stats?.total || 0;
     const resolvedObj = stats?.byStatus?.find(s => s._id === 'Resolved' || s._id === 'Closed');
@@ -69,13 +68,18 @@ export default function Analytics() {
         category: c._id || 'Uncategorized',
         count: c.count,
         fill: CHART_COLORS[c._id] || '#667eea'
-    })) || mockAnalyticsData.ticketsByCategory;
+    })) || [];
 
     const priorityData = stats?.byPriority?.map(p => ({
         name: p._id || 'Unknown',
         value: p.count,
         color: CHART_COLORS[p._id] || '#6b7280'
-    })) || mockAnalyticsData.priorityDistribution;
+    })) || [];
+
+    const ticketsOverTime = stats?.ticketsOverTime || [];
+    const resolutionRateTrend = stats?.resolutionRateTrend || [];
+    const heatmapData = stats?.heatmapData || [];
+    const funnelData = stats?.funnelData || [];
 
     const handleExport = () => {
         toast.success('Analytics report exported!');
@@ -147,7 +151,7 @@ export default function Analytics() {
                 <Card className="p-6">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Tickets Over Time</h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={mockAnalyticsData.ticketsOverTime}>
+                        <AreaChart data={ticketsOverTime}>
                             <defs>
                                 <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#667eea" stopOpacity={0.3} />
@@ -238,7 +242,7 @@ export default function Analytics() {
                 <Card className="p-6">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Resolution Rate Trend</h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={mockAnalyticsData.resolutionRate}>
+                        <LineChart data={resolutionRateTrend}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                             <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
                             <YAxis stroke="#6b7280" fontSize={12} domain={[60, 100]} unit="%" />
@@ -253,13 +257,13 @@ export default function Analytics() {
             {/* Heatmap */}
             <Card className="p-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Peak Hours Heatmap</h3>
-                <HeatmapChart data={mockAnalyticsData.heatmapData} />
+                <HeatmapChart data={heatmapData} />
             </Card>
 
             {/* Funnel Chart */}
             <Card className="p-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Resolution Workflow Funnel</h3>
-                <FunnelChart data={mockAnalyticsData.funnelData} />
+                <FunnelChart data={funnelData} />
             </Card>
         </div>
     );
@@ -268,7 +272,7 @@ export default function Analytics() {
 function HeatmapChart({ data }) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const hours = ['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM'];
-    const maxValue = Math.max(...data.map(d => d.value));
+    const maxValue = Math.max(...data.map(d => d.value), 1);
 
     const getColor = (value) => {
         const intensity = value / maxValue;

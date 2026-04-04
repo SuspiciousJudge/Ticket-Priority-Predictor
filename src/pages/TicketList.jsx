@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Filter, LayoutGrid, List, Plus, Columns3, ChevronLeft, ChevronRight, Download, Trash2, RefreshCw, CheckSquare, Square, X } from 'lucide-react';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
@@ -16,6 +16,7 @@ const ITEMS_PER_PAGE = 12;
 
 export default function TicketList() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { currentTeam } = useStore();
 
     const [searchParams] = useSearchParams();
@@ -97,9 +98,18 @@ export default function TicketList() {
         }
     };
 
-    const handleBulkDelete = () => {
-        toast.success(`${selectedTickets.length} tickets deleted (simulated)`);
-        setSelectedTickets([]);
+    const handleBulkDelete = async () => {
+        if (selectedTickets.length === 0) return;
+        const toastId = toast.loading(`Deleting ${selectedTickets.length} ticket(s)...`);
+        try {
+            await Promise.all(selectedTickets.map((id) => ticketsAPI.delete(id)));
+            await queryClient.invalidateQueries({ queryKey: ['tickets'] });
+            await queryClient.invalidateQueries({ queryKey: ['stats'] });
+            setSelectedTickets([]);
+            toast.success('Tickets deleted successfully', { id: toastId });
+        } catch {
+            toast.error('Failed to delete some tickets', { id: toastId });
+        }
     };
 
     const clearFilters = () => {

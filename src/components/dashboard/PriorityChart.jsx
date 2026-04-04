@@ -10,7 +10,7 @@ export default function PriorityChart() {
 
     const { data: statsResponse, isLoading } = useQuery({
         queryKey: ['stats', currentTeam?.id],
-        queryFn: () => ticketsAPI.getStats().then(res => res.data.data),
+        queryFn: () => ticketsAPI.getStats({ team: currentTeam?.id || undefined }).then(res => res.data.data),
     });
 
     const stats = statsResponse || {};

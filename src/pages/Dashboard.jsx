@@ -15,7 +15,7 @@ export default function Dashboard() {
 
     const { data: statsResponse, isLoading, isError } = useQuery({
         queryKey: ['stats', currentTeam?.id],
-        queryFn: () => ticketsAPI.getStats().then(res => res.data.data),
+        queryFn: () => ticketsAPI.getStats({ team: currentTeam?.id || undefined }).then(res => res.data.data),
         retry: 1,
     });
 

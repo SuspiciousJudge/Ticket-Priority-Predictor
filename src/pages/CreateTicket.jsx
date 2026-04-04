@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, FileText, Sparkles, Clock, Tag, Save, Send } from 'lucide-react';
 import Card from '../components/common/Card';
@@ -16,14 +16,6 @@ const categories = ['Bug', 'Feature', 'Enhancement', 'Support', 'Security'];
 const customerTiers = ['Enterprise', 'Business', 'Professional', 'Free'];
 const priorities = ['Critical', 'High', 'Medium', 'Low'];
 
-const similarTicketsData = [
-    { id: 'TICK-890', title: 'Login issues with SSO', similarity: 0.92, resolutionTime: '3h', status: 'Resolved' },
-    { id: 'TICK-876', title: 'Authentication timeout errors', similarity: 0.85, resolutionTime: '5h', status: 'Resolved' },
-    { id: 'TICK-854', title: 'Password reset not working', similarity: 0.78, resolutionTime: '2h', status: 'Resolved' },
-    { id: 'TICK-831', title: 'Two-factor auth broken on mobile', similarity: 0.71, resolutionTime: '8h', status: 'Resolved' },
-    { id: 'TICK-812', title: 'Session management issues', similarity: 0.65, resolutionTime: '4h', status: 'Closed' },
-];
-
 export default function CreateTicket() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -34,12 +26,21 @@ export default function CreateTicket() {
     const [draftSaved, setDraftSaved] = useState(false);
     const [showSimilar, setShowSimilar] = useState(false);
 
-    const { register, handleSubmit, watch, formState: { errors } } = useForm({
-        defaultValues: { title: '', description: '', category: '', customerTier: '', tags: '' }
+    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+        defaultValues: { title: '', description: '', category: '', customerTier: '', priority: '', tags: '' }
     });
 
     const watchTitle = watch('title');
     const watchDescription = watch('description');
+    const watchPriority = watch('priority');
+
+    const { data: similarTicketsResponse } = useQuery({
+        queryKey: ['similar-create', watchTitle],
+        queryFn: () => ticketsAPI.getAll({ search: watchTitle, limit: 5 }).then(res => res.data.data),
+        enabled: !!watchTitle && watchTitle.length > 8,
+        staleTime: 60 * 1000,
+    });
+    const similarTickets = (similarTicketsResponse?.tickets || []).slice(0, 5);
 
     const createTicketMutation = useMutation({
         mutationFn: (data) => ticketsAPI.create(data),
@@ -71,6 +72,9 @@ export default function CreateTicket() {
                             category: data.category || 'Support',
                             estimatedTime: data.estimatedTime || '2-8 hours',
                         });
+                        if (!watchPriority) {
+                            setValue('priority', data.priority || 'Medium', { shouldDirty: true });
+                        }
                     }
                     setShowSimilar(true);
                 } catch {
@@ -81,6 +85,9 @@ export default function CreateTicket() {
                         category: 'Support',
                         estimatedTime: '2-8 hours',
                     });
+                    if (!watchPriority) {
+                        setValue('priority', 'Medium', { shouldDirty: true });
+                    }
                 }
             }, 1200);
             return () => clearTimeout(timer);
@@ -88,7 +95,7 @@ export default function CreateTicket() {
             setAiPrediction(null);
             setShowSimilar(false);
         }
-    }, [watchTitle, watchDescription]);
+    }, [watchTitle, watchDescription, watchPriority, setValue]);
 
     // Auto-save draft simulation
     useEffect(() => {
@@ -136,6 +143,7 @@ export default function CreateTicket() {
                 description: data.description,
                 category: data.category || aiPrediction?.category,
                 customerTier: data.customerTier,
+                priority: data.priority || aiPrediction?.priority,
                 tags: data.tags ? data.tags.split(',').map(t => t.trim()) : [],
                 team: currentTeam?.id || undefined,
                 attachments,
@@ -189,7 +197,7 @@ export default function CreateTicket() {
                             </div>
 
                             {/* Category & Tier */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
                                     <select {...register('category')} className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
@@ -203,6 +211,14 @@ export default function CreateTicket() {
                                         <option value="">Select tier</option>
                                         {customerTiers.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                                    <select {...register('priority')} className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
+                                        <option value="">Use AI prediction</option>
+                                        {priorities.map(p => <option key={p} value={p}>{p}</option>)}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">You can override the AI prediction.</p>
                                 </div>
                             </div>
 
@@ -354,20 +370,19 @@ export default function CreateTicket() {
                                 <Card className="p-6">
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Similar Tickets</h3>
                                     <div className="space-y-3">
-                                        {similarTicketsData.map((ticket) => (
-                                            <div key={ticket.id} className="flex items-start justify-between p-3 bg-gray-50 dark:bg-dark-border/30 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border transition-colors cursor-pointer">
+                                        {similarTickets.map((ticket) => (
+                                            <div key={ticket._id || ticket.ticketId} className="flex items-start justify-between p-3 bg-gray-50 dark:bg-dark-border/30 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border transition-colors cursor-pointer">
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{ticket.title}</p>
                                                     <div className="flex items-center space-x-3 mt-1">
-                                                        <span className="text-xs text-gray-500">{ticket.id}</span>
-                                                        <span className="text-xs text-gray-500">Resolved in {ticket.resolutionTime}</span>
+                                                        <span className="text-xs text-gray-500">{ticket.ticketId || ticket._id}</span>
+                                                        <span className="text-xs text-gray-500">{ticket.status}</span>
                                                     </div>
                                                 </div>
-                                                <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded-full ml-2">
-                                                    {Math.round(ticket.similarity * 100)}%
-                                                </span>
+                                                <Badge type="priority" value={ticket.priority} className="ml-2">{ticket.priority}</Badge>
                                             </div>
                                         ))}
+                                        {similarTickets.length === 0 && <p className="text-sm text-gray-500">No similar tickets found yet.</p>}
                                     </div>
                                 </Card>
                             </motion.div>

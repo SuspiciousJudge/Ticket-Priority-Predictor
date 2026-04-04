@@ -324,3 +324,46 @@ Applied ML approach:
 5. Rule-based fallback for high availability.
 
 This gives a practical, production-friendly AI layer that is fast, robust, and easy to operate.
+
+
+14) AI-Assisted Similar Ticket Retrieval Update
+-----------------------------------------------
+The platform now includes an AI-adjacent similarity retrieval layer for ticket detail workflows.
+
+Purpose:
+1. Help operators quickly find related historical incidents.
+2. Improve triage speed and consistency.
+3. Surface likely resolution references while viewing a live ticket.
+
+Implementation summary:
+1. Backend endpoint: GET /api/tickets/:id/similar
+2. Candidate pool: all existing tickets except current ticket.
+3. Text source for similarity:
+   - ticket title
+   - ticket description
+4. Similarity metric:
+   - cosine similarity over term-frequency vectors
+5. Ranking output:
+   - top 5 tickets
+   - similarityScore (0..1)
+   - similarityPercent (0..100)
+
+Why cosine similarity here:
+1. Lightweight and deterministic.
+2. No external embedding service dependency.
+3. Works with existing Node.js runtime and MongoDB data shape.
+4. Low-latency enough for request-time retrieval in ticket detail page.
+
+Trade-offs:
+1. Lexical matching only (no semantic embeddings).
+2. Sensitive to vocabulary mismatch/synonyms.
+3. Can be upgraded later to embedding vectors for semantic retrieval.
+
+Frontend consumption:
+1. Ticket detail page fetches similar tickets using ticket ID route param.
+2. Cards show similarity percentage and ticket metadata.
+3. Clicking a card navigates to /tickets/:id and refetches all detail data.
+
+Operational safety:
+1. Similar retrieval does not block primary ticket read.
+2. If similarity query returns no matches, detail page still renders normally.

@@ -64,7 +64,7 @@ export const ticketsAPI = {
   update: (id, data) => api.put(`/tickets/${id}`, data),
   delete: (id) => api.delete(`/tickets/${id}`),
   addComment: (id, data) => api.post(`/tickets/${id}/comments`, data),
-  getStats: () => api.get('/tickets/stats'),
+  getStats: (params) => api.get('/tickets/stats', { params }),
   getSimilar: (id) => api.get(`/tickets/${id}/similar`),
   exportCsv: () => api.get('/tickets/export-csv', { responseType: 'blob' }),
 };

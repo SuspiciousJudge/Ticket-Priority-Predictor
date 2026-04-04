@@ -5,6 +5,43 @@ const { generateTicketId } = require('../utils/helpers');
 const mongoose = require('mongoose');
 const { Parser } = require('json2csv');
 
+function tokenizeText(text = '') {
+  return String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token && token.length > 1);
+}
+
+function termFrequency(tokens = []) {
+  const tf = new Map();
+  for (const token of tokens) {
+    tf.set(token, (tf.get(token) || 0) + 1);
+  }
+  return tf;
+}
+
+function cosineSimilarity(tfA, tfB) {
+  if (!tfA || !tfB || tfA.size === 0 || tfB.size === 0) return 0;
+
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (const valA of tfA.values()) {
+    normA += valA * valA;
+  }
+
+  for (const [token, valB] of tfB.entries()) {
+    normB += valB * valB;
+    const valA = tfA.get(token) || 0;
+    dot += valA * valB;
+  }
+
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
 function getSlaDeadline(priority, createdAt = new Date()) {
   const date = new Date(createdAt);
   if (priority === 'Critical') date.setHours(date.getHours() + 4);
@@ -18,8 +55,14 @@ exports.getAll = async (req, res, next) => {
   try {
     const { priority, status, team, search, sort = 'createdAt', order = 'desc', page = 1, limit = 20 } = req.query;
     const query = {};
-    if (priority) query.priority = priority;
-    if (status) query.status = status;
+    if (priority) {
+      const priorities = String(priority).split(',').map((p) => p.trim()).filter(Boolean);
+      query.priority = priorities.length > 1 ? { $in: priorities } : priorities[0];
+    }
+    if (status) {
+      const statuses = String(status).split(',').map((s) => s.trim()).filter(Boolean);
+      query.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
+    }
     if (team && mongoose.Types.ObjectId.isValid(team)) query.team = team;
     if (search) query.$or = [{ title: new RegExp(search, 'i') }, { description: new RegExp(search, 'i') }, { ticketId: new RegExp(search, 'i') }];
 
@@ -58,9 +101,11 @@ exports.getById = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { title, description, category, customerTier, team: teamId, attachments } = req.body;
+    const { title, description, category, customerTier, team: teamId, attachments, priority: requestedPriority } = req.body;
     const ticketId = generateTicketId();
     const ai = await predictPriority(title, description, customerTier);
+    const allowedPriorities = ['Critical', 'High', 'Medium', 'Low'];
+    const finalPriority = allowedPriorities.includes(requestedPriority) ? requestedPriority : ai.priority;
 
     // Suggest assignee by expertise
     let suggested = null;
@@ -73,7 +118,7 @@ exports.create = async (req, res, next) => {
       ticketId,
       title,
       description,
-      priority: ai.priority,
+      priority: finalPriority,
       status: 'Open',
       category,
       customerTier,
@@ -86,7 +131,7 @@ exports.create = async (req, res, next) => {
       tags: ai.tags,
       attachments: attachments || [],
       aiPredictions: { predictedPriority: ai.priority, confidence: ai.confidence, reasoning: ai.reasoning },
-      slaDeadline: getSlaDeadline(ai.priority),
+      slaDeadline: getSlaDeadline(finalPriority),
     });
 
     const io = req.app.get('io');
@@ -161,18 +206,130 @@ exports.addComment = async (req, res, next) => {
 
 exports.stats = async (req, res, next) => {
   try {
+    const { team } = req.query;
+    const match = {};
+    if (team && mongoose.Types.ObjectId.isValid(team)) {
+      match.team = new mongoose.Types.ObjectId(team);
+    }
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 29);
+    startDate.setHours(0, 0, 0, 0);
+
     const [total, byPriority, byStatus, byCategory, avgResolution, todayResolved] = await Promise.all([
-      Ticket.countDocuments(),
-      Ticket.aggregate([{ $group: { _id: '$priority', count: { $sum: 1 } } }]),
-      Ticket.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
-      Ticket.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
-      Ticket.aggregate([{ $match: { resolutionTime: { $exists: true } } }, { $group: { _id: null, avg: { $avg: '$resolutionTime' } } }]),
+      Ticket.countDocuments(match),
+      Ticket.aggregate([{ $match: match }, { $group: { _id: '$priority', count: { $sum: 1 } } }]),
+      Ticket.aggregate([{ $match: match }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Ticket.aggregate([{ $match: match }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
+      Ticket.aggregate([{ $match: { ...match, resolutionTime: { $exists: true, $ne: null } } }, { $group: { _id: null, avg: { $avg: '$resolutionTime' } } }]),
       (async () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return Ticket.countDocuments({ status: 'Resolved', updatedAt: { $gte: today } });
+        return Ticket.countDocuments({ ...match, status: 'Resolved', updatedAt: { $gte: today } });
       })(),
     ]);
+
+    const [ticketsOverTimeAgg, resolutionTrendAgg, heatmapAgg] = await Promise.all([
+      Ticket.aggregate([
+        { $match: { ...match, createdAt: { $gte: startDate } } },
+        {
+          $group: {
+            _id: {
+              y: { $year: '$createdAt' },
+              m: { $month: '$createdAt' },
+              d: { $dayOfMonth: '$createdAt' },
+            },
+            open: {
+              $sum: {
+                $cond: [{ $in: ['$status', ['Open', 'In Progress']] }, 1, 0],
+              },
+            },
+            resolved: {
+              $sum: {
+                $cond: [{ $in: ['$status', ['Resolved', 'Closed']] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { '_id.y': 1, '_id.m': 1, '_id.d': 1 } },
+      ]),
+      Ticket.aggregate([
+        { $match: { ...match, createdAt: { $gte: startDate } } },
+        {
+          $group: {
+            _id: {
+              y: { $year: '$createdAt' },
+              m: { $month: '$createdAt' },
+            },
+            total: { $sum: 1 },
+            resolved: {
+              $sum: {
+                $cond: [{ $in: ['$status', ['Resolved', 'Closed']] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { '_id.y': 1, '_id.m': 1 } },
+      ]),
+      Ticket.aggregate([
+        { $match: { ...match, createdAt: { $gte: startDate } } },
+        {
+          $group: {
+            _id: {
+              day: { $isoDayOfWeek: '$createdAt' },
+              hour: { $hour: '$createdAt' },
+            },
+            value: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const daysMap = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
+    const hourLabel = (h) => `${((h + 11) % 12) + 1} ${h < 12 ? 'AM' : 'PM'}`;
+
+    const heatmapLookup = new Map();
+    for (const row of heatmapAgg) {
+      heatmapLookup.set(`${row._id.day}-${row._id.hour}`, row.value);
+    }
+    const heatmapData = [];
+    for (let d = 1; d <= 7; d += 1) {
+      for (const h of hours) {
+        heatmapData.push({
+          day: daysMap[d - 1],
+          hour: hourLabel(h),
+          value: heatmapLookup.get(`${d}-${h}`) || 0,
+        });
+      }
+    }
+
+    const ticketsOverTime = ticketsOverTimeAgg.map((row) => {
+      const dt = new Date(Date.UTC(row._id.y, row._id.m - 1, row._id.d));
+      return {
+        date: dt.toISOString().slice(0, 10),
+        open: row.open,
+        resolved: row.resolved,
+      };
+    });
+
+    const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const resolutionRateTrend = resolutionTrendAgg.map((row) => ({
+      month: `${monthName[row._id.m - 1]} ${String(row._id.y).slice(-2)}`,
+      rate: row.total > 0 ? Math.round((row.resolved / row.total) * 100) : 0,
+    }));
+
+    const openCount = byStatus.find((x) => x._id === 'Open')?.count || 0;
+    const inProgressCount = byStatus.find((x) => x._id === 'In Progress')?.count || 0;
+    const resolvedCount = byStatus.find((x) => x._id === 'Resolved')?.count || 0;
+    const closedCount = byStatus.find((x) => x._id === 'Closed')?.count || 0;
+
+    const funnelData = [
+      { stage: 'Open', value: openCount, fill: '#3b82f6' },
+      { stage: 'In Progress', value: inProgressCount, fill: '#8b5cf6' },
+      { stage: 'Resolved', value: resolvedCount, fill: '#10b981' },
+      { stage: 'Closed', value: closedCount, fill: '#14b8a6' },
+    ];
 
     res.json({
       success: true,
@@ -183,6 +340,10 @@ exports.stats = async (req, res, next) => {
         byCategory,
         avgResolution: avgResolution[0]?.avg || 0,
         todaysResolved: todayResolved,
+        ticketsOverTime,
+        resolutionRateTrend,
+        heatmapData,
+        funnelData,
       },
     });
   } catch (err) { next(err); }
@@ -192,11 +353,32 @@ exports.similar = async (req, res, next) => {
   try {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
-    const similar = await Ticket.find({ _id: { $ne: ticket._id }, tags: { $in: ticket.tags } })
-      .limit(5)
-      .select('ticketId title priority status createdAt')
+
+    const baseText = `${ticket.title || ''} ${ticket.description || ''}`.trim();
+    const baseTf = termFrequency(tokenizeText(baseText));
+
+    const candidates = await Ticket.find({ _id: { $ne: ticket._id } })
+      .select('ticketId title description priority status createdAt updatedAt assignee')
+      .populate('assignee', 'name email avatar')
       .lean();
-    res.json({ success: true, data: similar });
+
+    const ranked = candidates
+      .map((candidate) => {
+        const candidateText = `${candidate.title || ''} ${candidate.description || ''}`.trim();
+        const candidateTf = termFrequency(tokenizeText(candidateText));
+        const score = cosineSimilarity(baseTf, candidateTf);
+
+        return {
+          ...candidate,
+          similarityScore: Number(score.toFixed(4)),
+          similarityPercent: Number((score * 100).toFixed(1)),
+        };
+      })
+      .filter((item) => item.similarityScore > 0)
+      .sort((a, b) => b.similarityScore - a.similarityScore)
+      .slice(0, 5);
+
+    res.json({ success: true, data: ranked });
   } catch (err) { next(err); }
 };
 

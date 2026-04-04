@@ -32,8 +32,12 @@ const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
     : 'http://localhost:5000';
 
 export default function Layout() {
-    const { sidebarCollapsed, currentTeam } = useStore();
+    const { sidebarCollapsed, currentTeam, bootstrapData } = useStore();
     useTeamFilter();
+
+    useEffect(() => {
+        bootstrapData();
+    }, [bootstrapData]);
 
     useEffect(() => {
         const socket = io(SOCKET_URL, { withCredentials: true });

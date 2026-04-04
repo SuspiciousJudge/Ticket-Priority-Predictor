@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle, Sparkles } from 'lucide-react';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
@@ -33,7 +33,19 @@ export default function TicketDetail() {
         retry: 1,
     });
 
+    const { data: similarTickets = [], isLoading: similarLoading } = useQuery({
+        queryKey: ['ticket-similar', id],
+        queryFn: () => ticketsAPI.getSimilar(id).then((res) => res.data.data || []),
+        enabled: !!id,
+        retry: 1,
+    });
+
     const ticket = ticketRes;
+
+    useEffect(() => {
+        setEditing(false);
+        setCommentText('');
+    }, [id]);
 
     // Delete mutation
     const deleteMutation = useMutation({
@@ -189,6 +201,44 @@ export default function TicketDetail() {
                                 </div>
                             )}
                         </div>
+                    </Card>
+
+                    {/* Similar Tickets */}
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
+                            <Sparkles className="w-5 h-5 text-primary-600" />
+                            <span>Similar Tickets</span>
+                        </h3>
+
+                        {similarLoading ? (
+                            <LoadingSkeleton count={3} />
+                        ) : similarTickets.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {similarTickets.map((item) => (
+                                    <button
+                                        key={item._id || item.ticketId}
+                                        onClick={() => navigate(`/tickets/${item._id}`)}
+                                        className="text-left p-4 rounded-xl border border-gray-200 dark:border-dark-border hover:border-primary-400 hover:bg-primary-50/40 dark:hover:bg-primary-900/20 transition-all"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-gray-500 mb-1">#{item.ticketId || item._id}</p>
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{item.title}</p>
+                                            </div>
+                                            <span className="text-xs font-bold text-primary-700 bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300 px-2 py-1 rounded-full whitespace-nowrap">
+                                                {item.similarityPercent}%
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 flex items-center justify-between">
+                                            <Badge type="priority" value={item.priority}>{item.priority}</Badge>
+                                            <Badge type="status" value={item.status}>{item.status}</Badge>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">No similar tickets found.</p>
+                        )}
                     </Card>
 
                     {/* Comments Section */}

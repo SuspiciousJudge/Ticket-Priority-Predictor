@@ -620,6 +620,57 @@ Remaining improvement opportunities:
 4. Add backup/restore and migration strategy documentation.
 
 
+12) 2026 Real-Data Migration Addendum
+-------------------------------------
+This section records the latest production-facing migration away from mock data.
+
+Backend data import and schema normalization:
+1. Added backend/scripts/importData.js.
+2. Importer supports JSON and CSV input.
+3. Added schema alias handling for common ITSM headers:
+  - Incident_ID, CI_Cat, CI_Subcat, Open_Time, Handle_Time_hrs, etc.
+4. Importer normalizes:
+  - priority to Critical/High/Medium/Low
+  - status to Open/In Progress/Resolved/Closed
+  - customer tiers to supported schema enum values
+5. Importer clears ticket collection, inserts transformed rows, then syncs indexes.
+
+Ticket API upgrades:
+1. Ticket list endpoint now supports comma-separated multi-filter values for status/priority.
+2. Ticket create endpoint supports user priority override while preserving AI prediction metadata.
+3. Ticket stats endpoint now accepts optional team scope and returns chart-ready data:
+  - ticketsOverTime
+  - resolutionRateTrend
+  - heatmapData
+  - funnelData
+
+Similar tickets (cosine similarity):
+1. Replaced tag-overlap logic with cosine similarity on title+description text vectors.
+2. Similar endpoint compares target ticket with all other tickets in MongoDB.
+3. Returns top 5 ranked matches with similarityScore and similarityPercent.
+
+Frontend migration outcomes:
+1. Removed active imports of src/data/mockData.js from pages.
+2. Analytics page now reads fully from backend stats endpoint.
+3. Team page roles/activity are derived from real team and ticket API data.
+4. Create Ticket now uses API-driven similar tickets and supports AI-priority prefill + user override.
+5. Ticket list bulk delete now performs real API deletes (not simulated).
+
+Ticket detail and navigation behavior:
+1. Route /tickets/:id remains the canonical detail route.
+2. TicketDetail now includes a Similar Tickets section with clickable cards.
+3. Clicking similar tickets updates URL and refetches detail payload for the new ID.
+4. Browser back/forward navigation works through standard route history behavior.
+
+Store and bootstrap notes:
+1. Zustand store includes server-data slices (tickets/users/teams) initialized as empty arrays.
+2. App shell triggers bootstrapData() to hydrate these slices from backend APIs on load.
+
+Current known blocker for full dataset verification:
+1. Repository currently does not include requested tickets.json/training_data.csv file by default.
+2. Import path is ready; once dataset file is provided, importer command populates MongoDB.
+
+
 12) Final Technical Summary
 ---------------------------
 This project uses a layered architecture:
