@@ -16,6 +16,23 @@ const categories = ['Bug', 'Feature', 'Enhancement', 'Support', 'Security'];
 const customerTiers = ['Enterprise', 'Business', 'Professional', 'Free'];
 const priorities = ['Critical', 'High', 'Medium', 'Low'];
 
+const KNOWLEDGE_BASE = [
+    { id: 'kb-auth-01', title: 'SSO Redirect Loop Troubleshooting', tags: ['sso', 'login', 'auth'] },
+    { id: 'kb-auth-02', title: 'MFA Token Validation Checklist', tags: ['mfa', 'auth', 'login'] },
+    { id: 'kb-perf-01', title: 'Dashboard Slowness Investigation Guide', tags: ['slow', 'performance', 'dashboard'] },
+    { id: 'kb-bill-01', title: 'Payment Failure Triage Runbook', tags: ['payment', 'billing', 'invoice'] },
+    { id: 'kb-upload-01', title: 'Attachment Upload Failure Playbook', tags: ['upload', 'attachment', 'file'] },
+    { id: 'kb-api-01', title: 'API 5xx Incident Response Steps', tags: ['api', '500', 'timeout'] },
+];
+
+const PLAYBOOKS = {
+    Authentication: ['Validate identity provider status', 'Confirm token/cookie validity', 'Retry from clean browser profile'],
+    Performance: ['Inspect response times and logs', 'Check DB query plans and cache', 'Scale workers if queue spikes'],
+    Billing: ['Verify gateway callbacks', 'Confirm transaction IDs and retries', 'Cross-check ledger and invoice jobs'],
+    Support: ['Capture reproducible steps', 'Attach logs/screenshots', 'Assign by expertise and priority'],
+    Security: ['Isolate affected surface', 'Collect audit trail artifacts', 'Notify incident owner if high impact'],
+};
+
 export default function CreateTicket() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -33,6 +50,7 @@ export default function CreateTicket() {
     const watchTitle = watch('title');
     const watchDescription = watch('description');
     const watchPriority = watch('priority');
+    const watchCategory = watch('category');
 
     const { data: similarTicketsResponse } = useQuery({
         queryKey: ['similar-create', watchTitle],
@@ -41,6 +59,18 @@ export default function CreateTicket() {
         staleTime: 60 * 1000,
     });
     const similarTickets = (similarTicketsResponse?.tickets || []).slice(0, 5);
+
+    const kbSuggestions = (() => {
+        const text = `${watchTitle || ''} ${watchDescription || ''}`.toLowerCase();
+        if (!text.trim()) return [];
+        return KNOWLEDGE_BASE
+            .map((item) => ({ ...item, score: item.tags.reduce((s, tag) => s + (text.includes(tag) ? 1 : 0), 0) }))
+            .filter((item) => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 4);
+    })();
+
+    const suggestedPlaybook = PLAYBOOKS[watchCategory || aiPrediction?.category] || PLAYBOOKS.Support;
 
     const createTicketMutation = useMutation({
         mutationFn: (data) => ticketsAPI.create(data),
@@ -52,7 +82,7 @@ export default function CreateTicket() {
         },
         onError: (err) => {
             console.error(err);
-            toast.error(err.response?.data?.message || 'Failed to create ticket.');
+            toast.error(err?.message || err?.data?.message || 'Failed to create ticket.');
         }
     });
 
@@ -142,7 +172,7 @@ export default function CreateTicket() {
                 title: data.title,
                 description: data.description,
                 category: data.category || aiPrediction?.category,
-                customerTier: data.customerTier,
+                customerTier: data.customerTier || undefined,
                 priority: data.priority || aiPrediction?.priority,
                 tags: data.tags ? data.tags.split(',').map(t => t.trim()) : [],
                 team: currentTeam?.id || undefined,
@@ -370,8 +400,16 @@ export default function CreateTicket() {
                                 <Card className="p-6">
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Similar Tickets</h3>
                                     <div className="space-y-3">
-                                        {similarTickets.map((ticket) => (
-                                            <div key={ticket._id || ticket.ticketId} className="flex items-start justify-between p-3 bg-gray-50 dark:bg-dark-border/30 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border transition-colors cursor-pointer">
+                                        {similarTickets.map((ticket) => {
+                                            const ticketDetailId = ticket._id || ticket.id;
+                                            return (
+                                            <button
+                                                type="button"
+                                                key={ticket._id || ticket.ticketId}
+                                                onClick={() => ticketDetailId && navigate(`/tickets/${ticketDetailId}`)}
+                                                disabled={!ticketDetailId}
+                                                className="w-full text-left flex items-start justify-between p-3 bg-gray-50 dark:bg-dark-border/30 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+                                            >
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{ticket.title}</p>
                                                     <div className="flex items-center space-x-3 mt-1">
@@ -380,14 +418,41 @@ export default function CreateTicket() {
                                                     </div>
                                                 </div>
                                                 <Badge type="priority" value={ticket.priority} className="ml-2">{ticket.priority}</Badge>
-                                            </div>
-                                        ))}
+                                            </button>
+                                        )})}
                                         {similarTickets.length === 0 && <p className="text-sm text-gray-500">No similar tickets found yet.</p>}
                                     </div>
                                 </Card>
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* Knowledge Base Suggestions */}
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Knowledge Base Suggestions</h3>
+                        {kbSuggestions.length === 0 ? (
+                            <p className="text-sm text-gray-500">Start describing the issue to get related KB suggestions.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {kbSuggestions.map((kb) => (
+                                    <div key={kb.id} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-border/20">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{kb.title}</p>
+                                        <p className="text-xs text-gray-500 mt-1">Match score: {kb.score}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Resolution Playbook */}
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Resolution Playbook</h3>
+                        <ol className="space-y-2 list-decimal pl-5 text-sm text-gray-700 dark:text-gray-300">
+                            {suggestedPlaybook.map((step, idx) => (
+                                <li key={`${idx}-${step}`}>{step}</li>
+                            ))}
+                        </ol>
+                    </Card>
                 </div>
             </div>
         </div>

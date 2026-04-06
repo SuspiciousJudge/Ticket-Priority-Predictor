@@ -5,8 +5,10 @@ const cors = require('cors');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const dbReady = require('./middleware/dbReady');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -55,15 +57,31 @@ const limiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 app.use(limiter);
 
 // Mount API
+// Health
+app.get('/api/health', (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbConnected = dbState === 1;
+  const message = dbConnected ? 'OK' : 'DEGRADED';
+  const statusCode = dbConnected ? 200 : 503;
+
+  return res.status(statusCode).json({
+    success: dbConnected,
+    message,
+    timestamp: new Date().toISOString(),
+    database: {
+      connected: dbConnected,
+      readyState: dbState,
+    },
+  });
+});
+
+app.use('/api', dbReady);
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/ai', aiRoutes);
-
-// Health
-app.get('/api/health', (req, res) => res.json({ success: true, message: 'OK', timestamp: new Date().toISOString() }));
 
 // Error handler
 app.use(errorHandler);

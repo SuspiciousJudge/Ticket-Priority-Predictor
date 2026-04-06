@@ -244,6 +244,58 @@ Detailed docs:
 - Added cosine-similarity based similar tickets endpoint.
 - Added Similar Tickets section in Ticket Detail with clickable navigation.
 - Removed active frontend mock-data dependencies from analytics/team/ticket creation flows.
+- Added realistic ticket corpus tooling:
+	- backend/scripts/feedGenuineTickets.js
+	- backend/scripts/cleanupJunkTickets.js
+	- backend/scripts/assignTicketsToDefaultTeam.js
+- Added database resilience hardening:
+	- retry/backoff MongoDB startup
+	- DB readiness middleware for API stability
+	- health endpoint DB readiness reporting
+- Fixed ticket create failures from empty customerTier payloads with safe normalization.
+- Strengthened hybrid priority prediction with weighted severity keywords and ONNX-aware escalation.
+- Added AI draft reply endpoint: POST /api/ai/draft-reply.
+- Added executive PDF export endpoint: GET /api/tickets/executive-snapshot.
+- Added advanced analytics modules:
+	- SLA risk predictor
+	- auto-triage queue
+	- team workload heatmap
+	- agent performance cards
+	- reopen analytics
+	- priority override audit metrics
+- Added ticket-level operations intelligence:
+	- escalation assistant
+	- incident war room checklist
+	- customer impact score
+	- root-cause timeline
+	- resolution playbooks
+	- knowledge-base suggestions in create flow
+- Added schema-backed lifecycle tracking:
+	- impactScore
+	- priorityOverrideAudit[]
+	- statusHistory[]
+	- reopenCount
+
+## Newly Added APIs (April 2026)
+
+- GET /api/tickets/executive-snapshot
+	- Downloads executive snapshot PDF with key operational metrics.
+
+- POST /api/ai/draft-reply
+	- Generates customer-facing update drafts with tone control.
+
+## Product Feature Set (Current)
+
+- Smart SLA risk prediction for active tickets.
+- Auto-triage queue for unassigned incidents.
+- Similar ticket resolver with likely fix suggestions.
+- Priority override auditing and analytics.
+- Team workload balancing insights.
+- Escalation assistant and incident war-room mode.
+- Customer impact scoring and explainable prioritization.
+- Resolution playbooks and KB-assisted creation flow.
+- Root-cause timeline and reopen-quality analytics.
+- Executive reporting export for leadership views.
 
 ## Recommended Next Steps
 

@@ -1,0 +1,18 @@
+AI Model Summary (Canonical Alias)
+==================================
+
+This file is a canonical alias summary for AI model notes.
+Primary detailed document remains:
+- ai model.txt
+
+April 2026 summary:
+1. Hybrid ONNX + weighted keyword heuristics priority engine.
+2. Severity-aware escalation guard (Critical/High keyword sets).
+3. Better confidence and reasoning output for transparency.
+4. Similar-ticket resolver enrichment with likely fix snippets.
+5. AI draft reply API added: POST /api/ai/draft-reply.
+
+For full technical details, read:
+- ai model.txt
+- revision.txt
+- README.md

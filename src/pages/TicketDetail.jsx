@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle, Sparkles } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle, Sparkles, Siren, FileWarning, Bot } from 'lucide-react';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
-import { ticketsAPI } from '../services/api';
+import { ticketsAPI, aiAPI } from '../services/api';
 import { formatDate, formatRelativeTime, cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -24,6 +24,13 @@ export default function TicketDetail() {
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
     const [commentText, setCommentText] = useState('');
+    const [replyTone, setReplyTone] = useState('professional');
+    const [warRoomChecklist, setWarRoomChecklist] = useState({
+        incidentCommander: false,
+        stakeholderUpdate: false,
+        mitigationStarted: false,
+        postmortemPlanned: false,
+    });
 
     // Fetch ticket from API
     const { data: ticketRes, isLoading, isError, error } = useQuery({
@@ -83,8 +90,20 @@ export default function TicketDetail() {
         onError: () => toast.error('Failed to add comment'),
     });
 
+    const draftReplyMutation = useMutation({
+        mutationFn: () => aiAPI.draftReply(ticket?.title, ticket?.description, replyTone),
+        onSuccess: (res) => {
+            const draft = res?.data?.data?.draft;
+            if (draft) {
+                setCommentText(draft);
+                toast.success('Draft reply generated');
+            }
+        },
+        onError: () => toast.error('Failed to generate draft reply'),
+    });
+
     const handleStartEdit = () => {
-        setEditForm({ priority: ticket.priority, status: ticket.status });
+        setEditForm({ priority: ticket.priority, status: ticket.status, priorityChangeReason: '' });
         setEditing(true);
     };
 
@@ -141,6 +160,27 @@ export default function TicketDetail() {
     const assigneeInitials = assigneeName !== 'Unassigned' ? assigneeName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
     const reporterName = ticket.createdBy?.name || 'Unknown';
     const reporterInitials = reporterName !== 'Unknown' ? reporterName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
+    const escalationAdvice = ticket.escalationAdvice || { shouldEscalate: false, level: 'Standard', reason: 'No escalation signal detected.' };
+    const playbook = ticket.playbook || [];
+
+    const rootCauseTimeline = [
+        { type: 'created', label: 'Ticket Created', by: reporterName, at: ticket.createdAt },
+        ...((ticket.statusHistory || []).map((h) => ({
+            type: 'status',
+            label: `Status changed ${h.from || 'Unknown'} -> ${h.to || 'Unknown'}`,
+            by: h.changedBy?.name || 'System',
+            at: h.changedAt,
+        }))),
+        ...((ticket.priorityOverrideAudit || []).map((h) => ({
+            type: 'override',
+            label: `Priority override ${h.from || 'Unknown'} -> ${h.to || 'Unknown'}`,
+            by: h.overriddenBy?.name || 'System',
+            at: h.overriddenAt,
+            reason: h.reason,
+        }))),
+    ]
+        .filter((x) => x.at)
+        .sort((a, b) => new Date(a.at) - new Date(b.at));
 
     return (
         <div className="space-y-6">
@@ -190,6 +230,10 @@ export default function TicketDetail() {
                                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1 block">Customer Tier</label>
                                 <p className="text-sm text-gray-900 dark:text-white font-medium">{ticket.customerTier || 'N/A'}</p>
                             </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1 block">Customer Impact Score</label>
+                                <p className="text-sm text-gray-900 dark:text-white font-medium">{ticket.impactScore ?? 0}/100</p>
+                            </div>
                             {ticket.tags?.length > 0 && (
                                 <div className="col-span-2">
                                     <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">Tags</label>
@@ -217,7 +261,7 @@ export default function TicketDetail() {
                                 {similarTickets.map((item) => (
                                     <button
                                         key={item._id || item.ticketId}
-                                        onClick={() => navigate(`/tickets/${item._id}`)}
+                                        onClick={() => item._id && navigate(`/tickets/${item._id}`)}
                                         className="text-left p-4 rounded-xl border border-gray-200 dark:border-dark-border hover:border-primary-400 hover:bg-primary-50/40 dark:hover:bg-primary-900/20 transition-all"
                                     >
                                         <div className="flex items-start justify-between gap-3">
@@ -233,11 +277,37 @@ export default function TicketDetail() {
                                             <Badge type="priority" value={item.priority}>{item.priority}</Badge>
                                             <Badge type="status" value={item.status}>{item.status}</Badge>
                                         </div>
+                                        {item.likelyFix && (
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">
+                                                Likely fix: {item.likelyFix}
+                                            </p>
+                                        )}
                                     </button>
                                 ))}
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500">No similar tickets found.</p>
+                        )}
+                    </Card>
+
+                    {/* Root Cause Timeline */}
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Root Cause Timeline</h3>
+                        {rootCauseTimeline.length === 0 ? (
+                            <p className="text-sm text-gray-500">No timeline events yet.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {rootCauseTimeline.map((item, idx) => (
+                                    <div key={`${item.type}-${idx}`} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.label}</p>
+                                            <span className="text-xs text-gray-500">{formatRelativeTime(item.at)}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">By {item.by || 'System'}</p>
+                                        {item.reason && <p className="text-xs text-gray-700 dark:text-gray-300 mt-1">Reason: {item.reason}</p>}
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </Card>
 
@@ -271,6 +341,29 @@ export default function TicketDetail() {
                         )}
 
                         {/* Add Comment Form */}
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                                <select
+                                    value={replyTone}
+                                    onChange={(e) => setReplyTone(e.target.value)}
+                                    className="px-2.5 py-1.5 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-xs"
+                                >
+                                    <option value="professional">Professional</option>
+                                    <option value="concise">Concise</option>
+                                    <option value="reassuring">Reassuring</option>
+                                </select>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={draftReplyMutation.isPending ? undefined : Bot}
+                                    loading={draftReplyMutation.isPending}
+                                    onClick={() => draftReplyMutation.mutate()}
+                                >
+                                    Draft Reply
+                                </Button>
+                            </div>
+                        </div>
+
                         <form onSubmit={handleAddComment} className="flex items-start space-x-3">
                             <textarea
                                 value={commentText}
@@ -288,6 +381,50 @@ export default function TicketDetail() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                    <Card className={cn('p-6 border', escalationAdvice.shouldEscalate ? 'border-danger-300 bg-danger-50/60 dark:bg-danger-900/10' : 'border-success-300 bg-success-50/60 dark:bg-success-900/10')}>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center space-x-2">
+                            <Siren className={cn('w-5 h-5', escalationAdvice.shouldEscalate ? 'text-danger-600' : 'text-success-600')} />
+                            <span>Escalation Assistant</span>
+                        </h3>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{escalationAdvice.level}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{escalationAdvice.reason}</p>
+                    </Card>
+
+                    {(ticket.priority === 'Critical' || escalationAdvice.shouldEscalate) && (
+                        <Card className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
+                                <FileWarning className="w-5 h-5 text-danger-600" />
+                                <span>Incident War Room</span>
+                            </h3>
+                            <div className="space-y-2">
+                                {[
+                                    ['incidentCommander', 'Incident commander assigned'],
+                                    ['stakeholderUpdate', 'Stakeholder communication sent'],
+                                    ['mitigationStarted', 'Mitigation started'],
+                                    ['postmortemPlanned', 'Postmortem planned'],
+                                ].map(([key, label]) => (
+                                    <label key={key} className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(warRoomChecklist[key])}
+                                            onChange={(e) => setWarRoomChecklist((prev) => ({ ...prev, [key]: e.target.checked }))}
+                                        />
+                                        <span>{label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Resolution Playbook</h3>
+                        <ol className="space-y-2 list-decimal pl-5 text-sm text-gray-700 dark:text-gray-300">
+                            {playbook.map((step, idx) => (
+                                <li key={`${idx}-${step}`}>{step}</li>
+                            ))}
+                        </ol>
+                    </Card>
+
                     <Card className="p-6">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Details</h3>
                         <div className="space-y-4">
@@ -295,10 +432,20 @@ export default function TicketDetail() {
                             <div>
                                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">Priority</label>
                                 {editing ? (
-                                    <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-                                        {priorities.map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
+                                    <div className="space-y-2">
+                                        <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+                                            {priorities.map(p => <option key={p} value={p}>{p}</option>)}
+                                        </select>
+                                        {editForm.priority !== ticket.priority && (
+                                            <input
+                                                value={editForm.priorityChangeReason || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, priorityChangeReason: e.target.value })}
+                                                placeholder="Reason for override"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white text-xs"
+                                            />
+                                        )}
+                                    </div>
                                 ) : (
                                     <Badge type="priority" value={ticket.priority} className="text-sm py-1.5">{ticket.priority}</Badge>
                                 )}

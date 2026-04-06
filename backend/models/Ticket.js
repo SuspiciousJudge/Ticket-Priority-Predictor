@@ -23,6 +23,21 @@ const SimilarSchema = new mongoose.Schema({
   similarity: Number
 }, { _id: false });
 
+const PriorityOverrideSchema = new mongoose.Schema({
+  from: String,
+  to: String,
+  reason: String,
+  overriddenBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  overriddenAt: { type: Date, default: Date.now },
+}, { _id: false });
+
+const StatusHistorySchema = new mongoose.Schema({
+  from: String,
+  to: String,
+  changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  changedAt: { type: Date, default: Date.now },
+}, { _id: false });
+
 const TicketSchema = new mongoose.Schema({
   ticketId: { type: String, unique: true },
   title: { type: String, required: true },
@@ -46,6 +61,10 @@ const TicketSchema = new mongoose.Schema({
   comments: [CommentSub],
   aiPredictions: AiPredSchema,
   similarTickets: [SimilarSchema],
+  impactScore: { type: Number, default: 0 },
+  priorityOverrideAudit: [PriorityOverrideSchema],
+  statusHistory: [StatusHistorySchema],
+  reopenCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 // Indexes for query performance

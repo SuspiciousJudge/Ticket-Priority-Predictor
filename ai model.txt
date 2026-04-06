@@ -367,3 +367,69 @@ Frontend consumption:
 Operational safety:
 1. Similar retrieval does not block primary ticket read.
 2. If similarity query returns no matches, detail page still renders normally.
+
+
+15) April 2026 Model Evolution (Heuristic + ONNX Hybrid)
+---------------------------------------------------------
+This update significantly strengthened production-time priority behavior while preserving ONNX inference.
+
+What changed:
+1. The predictor is now hybridized:
+   - ONNX output remains primary model signal.
+   - Weighted keyword heuristics can escalate severity when textual evidence is strong.
+2. Heuristic subsystem was redesigned from basic scoring to structured severity rules.
+
+Weighted rule groups now include:
+1. Critical signals:
+   - crash, service down, outage, production down, data loss, data corruption,
+     security breach, unauthorized access, duplicate charge/payment failure.
+2. High signals:
+   - fail/fails/failed, timeout, degraded, hangs/freezes,
+     auth/login/mfa/sso failures, permission denied, API 5xx/rate-limit/sync failure.
+3. Medium/Low softeners:
+   - intermittent/delayed/retry patterns
+   - cosmetic/minor/typo/enhancement language reducing severity tendency.
+
+Additional context features now used by heuristic path:
+1. Blast radius language (all users, multiple users, companywide).
+2. Customer tier weighting.
+3. Sentiment boost (angry/frustrated).
+4. Text depth/length contribution.
+
+Critical hard guard:
+1. If outage/crash/security/data-loss coexists with broad impact language,
+   result is force-escalated to Critical regardless of lower model output.
+
+ONNX integration behavior after update:
+1. ONNX prediction is computed first when runtime/model is available.
+2. Heuristic severity is computed in parallel.
+3. Final priority = max(onnx_priority, heuristic_priority) by severity rank.
+4. Reasoning explicitly states when escalation occurred above ONNX label.
+
+Confidence behavior:
+1. Heuristic path computes confidence from score + matched signal count.
+2. Hybrid path uses elevated confidence when heuristic escalation is applied.
+
+Observed calibration targets after tuning:
+1. Crash/outage/security/data-loss incidents -> Critical.
+2. Fail/timeout/auth/API incidents -> generally High.
+3. UI/cosmetic issues -> Medium/Low depending on context.
+
+Operational impact:
+1. Better alignment with real ITSM triage expectations.
+2. Fewer under-prioritized severe incidents.
+3. More transparent reasoning for human operators.
+
+
+16) Related AI Additions Beyond Priority Model
+----------------------------------------------
+In addition to priority prediction, new AI-adjacent capabilities were introduced:
+
+1. POST /api/ai/draft-reply
+   - Generates concise customer-facing draft updates.
+   - Supports tone control (professional/concise/reassuring).
+   - Falls back to deterministic template text if Gemini is unavailable.
+
+2. Similar-ticket resolver enrichment
+   - Similar ticket responses now include likely resolution snippets sourced from
+     resolved/closed historical tickets.

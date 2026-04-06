@@ -67,6 +67,7 @@ export const ticketsAPI = {
   getStats: (params) => api.get('/tickets/stats', { params }),
   getSimilar: (id) => api.get(`/tickets/${id}/similar`),
   exportCsv: () => api.get('/tickets/export-csv', { responseType: 'blob' }),
+  exportExecutiveSnapshot: () => api.get('/tickets/executive-snapshot', { responseType: 'blob' }),
 };
 
 export const teamsAPI = {
@@ -100,6 +101,8 @@ export const aiAPI = {
     api.post('/ai/chat', { message, conversationHistory }),
   suggestPriority: (title, description) =>
     api.post('/ai/suggest-priority', { title, description }),
+  draftReply: (ticketTitle, ticketDescription, tone = 'professional') =>
+    api.post('/ai/draft-reply', { ticketTitle, ticketDescription, tone }),
   modelHealth: () => api.get('/ai/model-health'),
 };
 

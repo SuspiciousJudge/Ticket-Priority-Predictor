@@ -146,4 +146,36 @@ Description: ${description || 'No description provided'}`;
   } catch (err) { next(err); }
 });
 
+// POST /api/ai/draft-reply
+router.post('/draft-reply', auth, async (req, res, next) => {
+  try {
+    const { ticketTitle, ticketDescription, tone = 'professional' } = req.body;
+    if (!ticketTitle) {
+      return res.status(400).json({ success: false, message: 'ticketTitle is required' });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      const fallback = `Thanks for reporting this issue. We have reviewed the ticket "${ticketTitle}" and are actively investigating it. Next update will be shared once we complete initial triage.`;
+      return res.json({ success: true, data: { draft: fallback } });
+    }
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `Write a concise customer-facing ticket update in ${tone} tone.
+Ticket title: ${ticketTitle}
+Ticket description: ${ticketDescription || 'No description'}
+
+Rules:
+- Keep it under 90 words
+- Mention current status and next action
+- Do not promise an exact resolution time unless explicitly known
+- Output only the message text`;
+
+    const result = await model.generateContent(prompt);
+    const draft = result.response.text().trim();
+    return res.json({ success: true, data: { draft } });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 module.exports = router;

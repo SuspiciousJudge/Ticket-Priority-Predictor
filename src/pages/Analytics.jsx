@@ -8,10 +8,88 @@ import { motion } from 'framer-motion';
 import { Download, TrendingUp, TrendingDown, Ticket, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import Badge from '../components/common/Badge';
 import { useStore } from '../store/useStore';
 import { ticketsAPI } from '../services/api';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+
+function asNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function safeIsoDate(value) {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+    return d.toISOString().slice(0, 10);
+}
+
+function getRangeDays(range) {
+    if (range === '7d') return 7;
+    if (range === '30d') return 30;
+    if (range === '90d') return 90;
+    return null;
+}
+
+function buildAnalyticsFromTickets(tickets = [], dateRange = 'all') {
+    const now = new Date();
+    const days = getRangeDays(dateRange);
+    const filtered = tickets.filter((t) => {
+        if (!days) return true;
+        const created = new Date(t.createdAt || Date.now());
+        const diff = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+        return diff <= days;
+    });
+
+    const byPriorityMap = new Map();
+    const byStatusMap = new Map();
+    const byCategoryMap = new Map();
+    const ticketsOverTimeMap = new Map();
+
+    for (const t of filtered) {
+        const priority = t.priority || 'Medium';
+        const status = t.status || 'Open';
+        const category = t.category || 'Support';
+        const dateKey = safeIsoDate(t.createdAt || Date.now());
+
+        byPriorityMap.set(priority, asNumber(byPriorityMap.get(priority), 0) + 1);
+        byStatusMap.set(status, asNumber(byStatusMap.get(status), 0) + 1);
+        byCategoryMap.set(category, asNumber(byCategoryMap.get(category), 0) + 1);
+
+        const existing = ticketsOverTimeMap.get(dateKey) || { date: dateKey, open: 0, resolved: 0 };
+        if (status === 'Resolved' || status === 'Closed') existing.resolved += 1;
+        else existing.open += 1;
+        ticketsOverTimeMap.set(dateKey, existing);
+    }
+
+    const byPriority = Array.from(byPriorityMap.entries()).map(([k, v]) => ({ _id: k, count: v }));
+    const byStatus = Array.from(byStatusMap.entries()).map(([k, v]) => ({ _id: k, count: v }));
+    const byCategory = Array.from(byCategoryMap.entries()).map(([k, v]) => ({ _id: k, count: v }));
+    const ticketsOverTime = Array.from(ticketsOverTimeMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    const openCount = byStatus.find((x) => x._id === 'Open')?.count || 0;
+    const inProgressCount = byStatus.find((x) => x._id === 'In Progress')?.count || 0;
+    const resolvedCount = byStatus.find((x) => x._id === 'Resolved')?.count || 0;
+    const closedCount = byStatus.find((x) => x._id === 'Closed')?.count || 0;
+
+    return {
+        total: filtered.length,
+        byPriority,
+        byStatus,
+        byCategory,
+        avgResolution: 0,
+        ticketsOverTime,
+        resolutionRateTrend: [],
+        heatmapData: [],
+        funnelData: [
+            { stage: 'Open', value: openCount, fill: '#3b82f6' },
+            { stage: 'In Progress', value: inProgressCount, fill: '#8b5cf6' },
+            { stage: 'Resolved', value: resolvedCount, fill: '#10b981' },
+            { stage: 'Closed', value: closedCount, fill: '#14b8a6' },
+        ],
+    };
+}
 
 const dateRanges = [
     { label: '7 Days', value: '7d' },
@@ -52,40 +130,81 @@ export default function Analytics() {
     const [dateRange, setDateRange] = useState('7d');
     const { currentTeam } = useStore();
 
-    const { data: statsResponse, isLoading } = useQuery({
+    const { data: statsResponse, isLoading, isError } = useQuery({
         queryKey: ['stats', currentTeam?.id],
         queryFn: () => ticketsAPI.getStats({ team: currentTeam?.id || undefined }),
+        retry: 2,
+        refetchInterval: 5000,
+        refetchOnWindowFocus: true,
     });
 
-    const stats = statsResponse?.data?.data || {};
+    const { data: ticketsResponse, isLoading: ticketsLoading } = useQuery({
+        queryKey: ['tickets', 'analytics-fallback', currentTeam?.id],
+        queryFn: () => ticketsAPI.getAll({ team: currentTeam?.id || undefined, limit: 1000 }).then((res) => res.data.data),
+        retry: 1,
+        refetchInterval: 5000,
+        refetchOnWindowFocus: true,
+    });
 
-    const totalTickets = stats?.total || 0;
-    const resolvedObj = stats?.byStatus?.find(s => s._id === 'Resolved' || s._id === 'Closed');
-    const resolvedTickets = resolvedObj ? resolvedObj.count : 0;
+    let stats = {};
+    try {
+        const apiStats = statsResponse?.data?.data;
+        const fallbackStats = buildAnalyticsFromTickets(ticketsResponse?.tickets || [], dateRange);
+        const hasApiStatsData = apiStats && ((apiStats.total || 0) > 0 || (apiStats.byPriority?.length || 0) > 0 || (apiStats.byStatus?.length || 0) > 0);
+        stats = hasApiStatsData ? apiStats : fallbackStats;
+    } catch (e) {
+        console.error('Analytics data normalization failed:', e);
+        stats = buildAnalyticsFromTickets([], dateRange);
+    }
+
+    const totalTickets = asNumber(stats?.total, 0);
+    const resolvedObj = stats?.byStatus?.find(s => s?._id === 'Resolved' || s?._id === 'Closed');
+    const resolvedTickets = asNumber(resolvedObj?.count, 0);
     const resolutionRate = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 100) : 0;
 
-    const categoryData = stats?.byCategory?.map(c => ({
+    const categoryData = (stats?.byCategory || []).map(c => ({
         category: c._id || 'Uncategorized',
-        count: c.count,
+        count: asNumber(c.count, 0),
         fill: CHART_COLORS[c._id] || '#667eea'
-    })) || [];
+    }));
 
-    const priorityData = stats?.byPriority?.map(p => ({
+    const priorityData = (stats?.byPriority || []).map(p => ({
         name: p._id || 'Unknown',
-        value: p.count,
+        value: asNumber(p.count, 0),
         color: CHART_COLORS[p._id] || '#6b7280'
-    })) || [];
+    }));
 
-    const ticketsOverTime = stats?.ticketsOverTime || [];
-    const resolutionRateTrend = stats?.resolutionRateTrend || [];
-    const heatmapData = stats?.heatmapData || [];
-    const funnelData = stats?.funnelData || [];
+    const ticketsOverTime = Array.isArray(stats?.ticketsOverTime) ? stats.ticketsOverTime : [];
+    const resolutionRateTrend = Array.isArray(stats?.resolutionRateTrend) ? stats.resolutionRateTrend : [];
+    const heatmapData = Array.isArray(stats?.heatmapData) ? stats.heatmapData : [];
+    const funnelData = Array.isArray(stats?.funnelData) ? stats.funnelData : [];
 
-    const handleExport = () => {
-        toast.success('Analytics report exported!');
+    const handleExport = async () => {
+        try {
+            const toastId = toast.loading('Preparing executive snapshot...');
+            const res = await ticketsAPI.exportExecutiveSnapshot();
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'executive-snapshot.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Executive snapshot exported', { id: toastId });
+        } catch (e) {
+            console.error(e);
+            toast.error('Export failed');
+        }
     };
 
-    if (isLoading) {
+    const slaRisk = stats?.slaRisk || { breached: 0, atRisk: 0, warning: 0 };
+    const triageQueue = Array.isArray(stats?.triageQueue) ? stats.triageQueue : [];
+    const reopenByCategory = Array.isArray(stats?.reopenByCategory) ? stats.reopenByCategory : [];
+    const priorityOverrideStats = stats?.priorityOverrideStats || { totalOverrides: 0, ticketsWithOverrides: 0 };
+    const workloadByAgent = Array.isArray(stats?.workloadByAgent) ? stats.workloadByAgent : [];
+    const agentPerformance = Array.isArray(stats?.agentPerformance) ? stats.agentPerformance : [];
+
+    if (isLoading && ticketsLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-96 space-y-4">
                 <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
@@ -101,6 +220,9 @@ export default function Analytics() {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Analytics</h1>
                     <p className="text-gray-600 dark:text-gray-400">{currentTeam ? `${currentTeam.name} team` : 'All teams'} — Insights and metrics</p>
+                    {isError && (
+                        <p className="text-xs text-amber-600 mt-1">Stats API is temporarily unavailable. Showing live fallback from ticket list.</p>
+                    )}
                 </div>
                 <div className="flex items-center space-x-3">
                     <div className="flex items-center bg-gray-100 dark:bg-dark-border rounded-lg p-1">
@@ -143,6 +265,49 @@ export default function Analytics() {
                         </Card>
                     </motion.div>
                 ))}
+            </div>
+
+            {/* SLA Risk + Override Audit */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">SLA Risk Predictor</h3>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-danger-50 dark:bg-danger-900/20">
+                            <span className="text-sm font-medium text-danger-700">Breached</span>
+                            <span className="text-xl font-bold text-danger-700">{slaRisk.breached || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
+                            <span className="text-sm font-medium text-orange-700">At Risk (2h)</span>
+                            <span className="text-xl font-bold text-orange-700">{slaRisk.atRisk || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
+                            <span className="text-sm font-medium text-yellow-700">Warning (8h)</span>
+                            <span className="text-xl font-bold text-yellow-700">{slaRisk.warning || 0}</span>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-6 lg:col-span-2">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Auto-Triage Queue</h3>
+                    {triageQueue.length === 0 ? (
+                        <p className="text-sm text-gray-500">No unassigned open tickets in triage queue.</p>
+                    ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            {triageQueue.map((t) => (
+                                <div key={t._id || t.ticketId} className="p-3 border border-gray-200 dark:border-dark-border rounded-lg flex items-center justify-between">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{t.title}</p>
+                                        <p className="text-xs text-gray-500">{t.ticketId} | {t.category || 'Support'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <Badge type="priority" value={t.priority}>{t.priority}</Badge>
+                                        <p className="text-xs text-gray-500 mt-1">Impact {t.impactScore || 0}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
             </div>
 
             {/* Charts Grid */}
@@ -265,11 +430,98 @@ export default function Analytics() {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Resolution Workflow Funnel</h3>
                 <FunnelChart data={funnelData} />
             </Card>
+
+            {/* Workload + Agent Performance */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Team Workload Heatmap</h3>
+                    {workloadByAgent.length === 0 ? (
+                        <p className="text-sm text-gray-500">No assigned open tickets yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {workloadByAgent.map((a) => {
+                                const intensity = Math.min(100, a.weightedLoad * 8);
+                                return (
+                                    <div key={String(a.assigneeId)}>
+                                        <div className="flex items-center justify-between text-sm mb-1">
+                                            <span className="font-medium text-gray-800 dark:text-gray-200">{a.assigneeName}</span>
+                                            <span className="text-gray-500">Load {a.weightedLoad} | Open {a.openCount}</span>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-gray-200 dark:bg-dark-border overflow-hidden">
+                                            <div className="h-full bg-gradient-danger" style={{ width: `${intensity}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </Card>
+
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Agent Performance Cards</h3>
+                    {agentPerformance.length === 0 ? (
+                        <p className="text-sm text-gray-500">No agent performance data available.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-3">
+                            {agentPerformance.slice(0, 6).map((a) => (
+                                <div key={String(a.assigneeId)} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{a.assigneeName}</p>
+                                        <span className="text-xs text-gray-500">{a.resolutionRate}% resolution rate</span>
+                                    </div>
+                                    <div className="mt-2 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                                        <span>Resolved: {a.resolved}</span>
+                                        <span>Open: {a.open}</span>
+                                        <span>Avg MTTR: {Math.round(a.avgResolution || 0)}h</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+            </div>
+
+            {/* Reopen and override analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Reopen Analytics</h3>
+                    {reopenByCategory.length === 0 ? (
+                        <p className="text-sm text-gray-500">No reopened ticket patterns yet.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {reopenByCategory.map((r) => (
+                                <div key={r._id || 'unknown'} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-dark-border/30">
+                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{r._id || 'Uncategorized'}</span>
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">{r.totalReopens} reopens</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Priority Override Audit</h3>
+                    <div className="space-y-3">
+                        <div className="p-4 rounded-lg bg-primary-50 dark:bg-primary-900/20">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Total Overrides</p>
+                            <p className="text-2xl font-bold text-primary-700">{priorityOverrideStats.totalOverrides || 0}</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-gray-50 dark:bg-dark-border/30">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Tickets With Override</p>
+                            <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{priorityOverrideStats.ticketsWithOverrides || 0}</p>
+                        </div>
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 }
 
 function HeatmapChart({ data }) {
+    if (!data || data.length === 0) {
+        return <p className="text-sm text-gray-500">No heatmap data available yet.</p>;
+    }
+
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const hours = ['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM'];
     const maxValue = Math.max(...data.map(d => d.value), 1);
@@ -324,13 +576,19 @@ function HeatmapChart({ data }) {
 }
 
 function FunnelChart({ data }) {
+    if (!data || data.length === 0) {
+        return <p className="text-sm text-gray-500">No funnel data available yet.</p>;
+    }
+
     const maxValue = data[0]?.value || 1;
 
     return (
         <div className="space-y-3 max-w-2xl mx-auto">
             {data.map((stage, index) => {
-                const widthPercent = (stage.value / maxValue) * 100;
-                const dropOff = index > 0 ? Math.round(((data[index - 1].value - stage.value) / data[index - 1].value) * 100) : 0;
+                const current = asNumber(stage?.value, 0);
+                const prev = index > 0 ? asNumber(data[index - 1]?.value, 0) : 0;
+                const widthPercent = maxValue > 0 ? (current / maxValue) * 100 : 0;
+                const dropOff = index > 0 && prev > 0 ? Math.round(((prev - current) / prev) * 100) : 0;
 
                 return (
                     <motion.div key={stage.stage} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}
@@ -348,7 +606,7 @@ function FunnelChart({ data }) {
                                     className="h-full rounded-lg flex items-center justify-end pr-3"
                                     style={{ backgroundColor: stage.fill }}
                                 >
-                                    <span className="text-xs font-bold text-white">{stage.value}</span>
+                                    <span className="text-xs font-bold text-white">{current}</span>
                                 </motion.div>
                             </div>
                         </div>

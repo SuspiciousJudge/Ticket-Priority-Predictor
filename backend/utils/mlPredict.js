@@ -33,7 +33,14 @@ function detectSentiment(text = '') {
 function extractTags(text = '') {
   const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const tags = new Set();
-  ['error','login','payment','api','crash','performance','ui','database','email','upload','download','auth','sso','security','rate-limit'].forEach(k => { if (words.includes(k)) tags.add(k); });
+  [
+    'error', 'login', 'payment', 'api', 'crash', 'performance', 'ui', 'database',
+    'email', 'upload', 'download', 'auth', 'sso', 'security', 'rate-limit',
+    'timeout', 'latency', 'outage', 'billing', 'invoice', 'permission', 'mfa',
+    'token', 'webhook', 'sync', 'mobile', 'report', 'export', 'attachment'
+  ].forEach((k) => {
+    if (words.includes(k)) tags.add(k);
+  });
   return Array.from(tags).slice(0, 6);
 }
 
@@ -46,31 +53,109 @@ function estimateResolutionTime(priority) {
   }
 }
 
-function buildFallbackPrediction(text, customerTier, sentiment) {
-  let score = 0;
-  if (/enterprise|enterprise customer|enterprise account/.test((customerTier || '').toLowerCase())) score += 20;
+const PRIORITY_RANK = {
+  Low: 0,
+  Medium: 1,
+  High: 2,
+  Critical: 3,
+};
 
-  const isCritical = ['crash', 'data loss', 'payment', 'security', 'unauthorized', 'panic', 'deadlock'].some(k => text.includes(k));
-  const isHigh = ['error', 'failed', 'timeout', 'broken', 'down', 'unable'].some(k => text.includes(k));
+const KEYWORD_RULES = [
+  // Critical severity
+  { priority: 'Critical', weight: 45, pattern: /\b(crash|crashes|crashed|kernel panic|panic|service down|system down|production down|outage|sev1|p1)\b/i },
+  { priority: 'Critical', weight: 42, pattern: /\b(data loss|data corruption|security breach|unauthorized access|account takeover|ransomware)\b/i },
+  { priority: 'Critical', weight: 38, pattern: /\b(payment failed|duplicate charge|billing failure|cannot process payment)\b/i },
 
-  if (isCritical) score += 30;
-  else if (isHigh) score += 20;
+  // High severity
+  { priority: 'High', weight: 22, pattern: /\b(fail|fails|failed|failure|unable to|cannot|can\'t|won\'t)\b/i },
+  { priority: 'High', weight: 18, pattern: /\b(timeout|timed out|latency|very slow|degraded|stuck|hangs|freezes)\b/i },
+  { priority: 'High', weight: 18, pattern: /\b(login issue|login failed|mfa|sso|auth|authentication|permission denied|access denied)\b/i },
+  { priority: 'High', weight: 16, pattern: /\b(api error|500|502|503|rate limit|webhook fail|sync fail)\b/i },
 
-  score += Math.min(Math.floor(text.length / 50), 20);
+  // Medium severity
+  { priority: 'Medium', weight: 14, pattern: /\b(intermittent|sometimes|occasionally|retry|delay|queued|slow)\b/i },
+  { priority: 'Medium', weight: 12, pattern: /\b(ui issue|display|alignment|formatting|export issue|report mismatch)\b/i },
+
+  // Low severity
+  { priority: 'Low', weight: -12, pattern: /\b(cosmetic|minor|typo|enhancement|feature request|nice to have)\b/i },
+];
+
+function derivePriorityFromScore(score) {
+  if (score >= 90) return 'Critical';
+  if (score >= 48) return 'High';
+  if (score >= 22) return 'Medium';
+  return 'Low';
+}
+
+function maxPriority(a, b) {
+  return PRIORITY_RANK[a] >= PRIORITY_RANK[b] ? a : b;
+}
+
+function runKeywordHeuristics(text, customerTier, sentiment) {
+  const normalizedText = String(text || '').toLowerCase();
+  let score = 5;
+  let strongestPriority = 'Low';
+  const matched = [];
+
+  for (const rule of KEYWORD_RULES) {
+    if (rule.pattern.test(normalizedText)) {
+      score += rule.weight;
+      strongestPriority = maxPriority(strongestPriority, rule.priority);
+      matched.push(rule.priority);
+    }
+  }
+
+  // Blast radius signals
+  if (/\b(all users|multiple users|entire team|companywide|across organization|everyone)\b/i.test(normalizedText)) {
+    score += 14;
+    strongestPriority = maxPriority(strongestPriority, 'High');
+  }
+  if (/\b(single user|one user|specific user)\b/i.test(normalizedText)) {
+    score -= 6;
+  }
+
+  // Customer tier impact
+  if (/enterprise|enterprise customer|enterprise account/.test((customerTier || '').toLowerCase())) {
+    score += 12;
+    strongestPriority = maxPriority(strongestPriority, 'Medium');
+  }
+
+  // Sentiment signal
+  if (sentiment === 'Angry') score += 8;
+  if (sentiment === 'Frustrated') score += 4;
+  if (sentiment === 'Happy') score -= 3;
+
+  // Description depth
+  score += Math.min(Math.floor(normalizedText.length / 80), 16);
+
+  // Guardrail: crash/outage/security/data-loss + wide impact should always be Critical.
+  const hardCritical = /\b(crash|outage|service down|system down|security breach|data loss|data corruption)\b/i.test(normalizedText)
+    && /\b(all users|multiple users|companywide|across organization|production)\b/i.test(normalizedText);
+  if (hardCritical) strongestPriority = 'Critical';
+
   score = Math.min(Math.max(score, 0), 100);
-
-  let priority = 'Low';
-  if (score >= 60) priority = 'Critical';
-  else if (score >= 40) priority = 'High';
-  else if (score >= 20) priority = 'Medium';
+  const scorePriority = derivePriorityFromScore(score);
+  const finalPriority = maxPriority(scorePriority, strongestPriority);
+  const confidence = Math.min(96, Math.max(45, Math.round(48 + score * 0.48 + matched.length * 3)));
 
   return {
-    priority,
-    confidence: Math.min(Math.round(score * 0.8 + 10), 95),
+    priority: finalPriority,
+    confidence,
+    score,
+    matchedCount: matched.length,
+  };
+}
+
+function buildFallbackPrediction(text, customerTier, sentiment) {
+  const heuristic = runKeywordHeuristics(text, customerTier, sentiment);
+
+  return {
+    priority: heuristic.priority,
+    confidence: heuristic.confidence,
     sentiment,
     tags: extractTags(text),
-    estimatedTime: estimateResolutionTime(priority),
-    reasoning: `Score ${score} from fallback heuristics`
+    estimatedTime: estimateResolutionTime(heuristic.priority),
+    reasoning: `Keyword heuristic score ${heuristic.score} with ${heuristic.matchedCount} priority signals`
   };
 }
 
@@ -91,11 +176,12 @@ function normalizePredictedLabel(value) {
 async function predictPriority(title, description, customerTier) {
   const text = (title + ' ' + (description || '')).toLowerCase();
   const sentiment = detectSentiment(description);
+  const heuristic = buildFallbackPrediction(text, customerTier, sentiment);
 
   // Fallback Rule-based if no model
   const sess = await loadModel();
   if (!sess) {
-    return buildFallbackPrediction(text, customerTier, sentiment);
+    return heuristic;
   }
 
   // ONNX Inference
@@ -113,19 +199,25 @@ async function predictPriority(title, description, customerTier) {
     const labelOutput = results[labelOutputName];
     const rawLabel = labelOutput && labelOutput.data ? labelOutput.data[0] : undefined;
     const predictedPriority = normalizePredictedLabel(rawLabel);
+    const finalPriority = maxPriority(predictedPriority, heuristic.priority);
+    const finalConfidence = finalPriority === heuristic.priority
+      ? Math.max(heuristic.confidence, 82)
+      : 80;
 
     // Some skl2onnx models expose probability as a map/sequence output type,
     // which may be unsupported by onnxruntime-node in certain builds.
     // We fetch label output only and use a stable default confidence.
-    const confidence = 80;
-    
+    const wasEscalated = finalPriority !== predictedPriority;
+
     return {
-      priority: predictedPriority,
-      confidence,
+      priority: finalPriority,
+      confidence: finalConfidence,
       sentiment,
-      tags: extractTags(text),
-      estimatedTime: estimateResolutionTime(predictedPriority),
-      reasoning: `Predicted by ONNX Random Forest model (${labelOutputName})`
+      tags: heuristic.tags,
+      estimatedTime: estimateResolutionTime(finalPriority),
+      reasoning: wasEscalated
+        ? `ONNX predicted ${predictedPriority}; escalated to ${finalPriority} based on keyword severity`
+        : `Predicted by ONNX Random Forest model (${labelOutputName})`
     };
 
   } catch (err) {

@@ -398,6 +398,118 @@ Backend Runtime and API Layer
   Supports ticket attachments and media handling with local/cloud options.
 
 9. Socket.IO
+
+
+15) April 2026 Consolidated Revision Log
+----------------------------------------
+This section captures all major implementation changes completed in the latest development cycle.
+
+A) Data Quality, Seed and Realistic Ticket Corpus
+1. Added large realistic ticket feed script:
+  - backend/scripts/feedGenuineTickets.js
+2. Imported 60 realistic tickets across categories:
+  - Authentication, Notifications, Performance, Database, Integration,
+    Attachments, Billing, Mobile, Authorization, Reporting.
+3. Removed junk placeholder ticket data (hiegvegfef) with cleanup utility:
+  - backend/scripts/cleanupJunkTickets.js
+4. Added assignment utility to ensure tickets are visible under active team filters:
+  - backend/scripts/assignTicketsToDefaultTeam.js
+
+B) Similar Tickets and Resolver Enhancements
+1. Fixed non-clickable similar tickets in create flow.
+2. Enhanced similar-ticket backend payload with likely resolution text snippets
+  from previously resolved/closed incidents.
+3. Improved navigation safety when similar tickets lack an id.
+
+C) Priority Model and AI Classification Strengthening
+1. Upgraded heuristic classifier with weighted keyword rules and hard guards:
+  - Critical terms (crash, outage, security breach, data loss, etc.)
+  - High terms (fail/fails, timeout, auth/login, API 5xx, rate limits)
+  - Lower-severity terms (cosmetic, typo, enhancement) reduce score.
+2. Added impact signals:
+  - enterprise context, sentiment, blast radius terms (all users, companywide).
+3. Hybridized ONNX + heuristic prediction:
+  - ONNX remains primary label source.
+  - Severity-based escalation guard can raise priority when textual evidence is strong.
+4. Expanded tag extraction vocabulary for better downstream triage.
+
+D) Backend Reliability and Database Connectivity Hardening
+1. Reworked MongoDB connection strategy:
+  - Retry with incremental backoff.
+  - Tuned pooling/timeouts/heartbeat options.
+  - Connected/reconnected/disconnected/error lifecycle logging.
+2. Added database readiness middleware:
+  - backend/middleware/dbReady.js
+3. Protected API routes with DB-readiness checks to prevent unstable failures.
+4. Enhanced /api/health to return DB connectivity status and readyState.
+
+E) Ticket Create/Update Robustness Fixes
+1. Fixed ticket creation failure caused by empty customerTier payload.
+2. Backend now normalizes invalid/empty customerTier to Basic.
+3. Frontend create flow now avoids sending empty customerTier strings.
+4. Frontend error toast now uses normalized API client error shape
+  (err.message / err.data.message) instead of generic fallback only.
+
+F) Analytics Realtime, Stability and Feature Expansion
+1. Added realtime query invalidation on socket events (create/update).
+2. Added periodic analytics polling + refetch on window focus.
+3. Added fallback analytics synthesis from ticket list when stats API is degraded.
+4. Hardened analytics rendering against malformed/null/NaN payloads.
+5. Fixed runtime crash due to missing Badge import in Analytics page.
+6. Added advanced analytics feature blocks:
+  - SLA risk predictor (breached, at-risk, warning)
+  - Auto-triage queue for unassigned tickets
+  - Team workload heatmap (weighted open load)
+  - Agent performance cards (resolved/open/rate/avg resolution)
+  - Reopen analytics by category
+  - Priority override audit summary
+  - Executive snapshot export (PDF)
+
+G) New Feature Foundations (Requested Product Enhancements)
+Implemented MVP versions of the suggested feature set:
+1. Smart SLA Risk Predictor
+2. Auto-Triage Queue
+3. Similar Ticket Resolver with likely fixes
+4. Priority Override Audit
+5. Team Workload Heatmap
+6. Escalation Assistant
+7. Customer Impact Score
+8. Resolution Playbooks
+9. Root Cause Timeline
+10. Reopen Analytics
+11. Agent Performance Cards
+12. Executive Snapshot PDF export
+13. AI Draft Reply for comments
+14. Incident War Room checklist mode
+15. Knowledge Base Suggestions on ticket creation
+
+H) Schema and Domain Enhancements
+Ticket schema now includes:
+1. impactScore
+2. priorityOverrideAudit[]
+3. statusHistory[]
+4. reopenCount
+
+I) API Surface Additions
+1. GET /api/tickets/executive-snapshot
+  - Returns generated PDF executive report.
+2. POST /api/ai/draft-reply
+  - Generates customer-facing draft response with selectable tone.
+
+J) Verified Runtime Smoke Coverage
+Performed end-to-end checks for:
+1. auth login
+2. ticket create/update
+3. ticket similar retrieval
+4. ticket detail enrichment (escalation + playbook)
+5. stats payload expansion
+6. executive snapshot endpoint
+7. AI draft-reply endpoint
+
+K) Known Operational Notes
+1. Port 5000 conflicts can occur when multiple backend sessions are open.
+2. On Windows PowerShell, npm command invocation may require cmd /c wrapper.
+3. After large frontend changes, hard refresh is recommended to ensure latest bundle.
 - What it is:
   Real-time bidirectional event framework.
 - Where used:

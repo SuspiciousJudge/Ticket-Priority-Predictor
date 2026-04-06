@@ -12,6 +12,7 @@ import useTeamFilter from '../../hooks/useTeamFilter';
 import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 function PageLoader() {
     return (
@@ -33,6 +34,7 @@ const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
 
 export default function Layout() {
     const { sidebarCollapsed, currentTeam, bootstrapData } = useStore();
+    const queryClient = useQueryClient();
     useTeamFilter();
 
     useEffect(() => {
@@ -46,21 +48,33 @@ export default function Layout() {
             socket.emit('join_team', currentTeam.id);
         }
 
-        socket.on('ticket_created', (ticket) => {
-            // Prevent self-toasts? Maybe optional, we just notify
-            // The team event might be better to listen to if we are team scoped
+        const refreshTicketQueries = () => {
+            queryClient.invalidateQueries({ queryKey: ['tickets'] });
+            queryClient.invalidateQueries({ queryKey: ['stats'] });
+            queryClient.invalidateQueries({ queryKey: ['ticket'] });
+            queryClient.invalidateQueries({ queryKey: ['ticket-similar'] });
+        };
+
+        socket.on('ticket_created', () => {
+            refreshTicketQueries();
+        });
+
+        socket.on('ticket_updated', () => {
+            refreshTicketQueries();
         });
 
         socket.on('team_ticket_created', (ticket) => {
+            refreshTicketQueries();
             toast(`New Ticket: ${ticket.title}`, { icon: '🤖' });
         });
         
         socket.on('team_ticket_updated', (ticket) => {
+            refreshTicketQueries();
             toast.success(`Ticket Updated: ${ticket.ticketId}`);
         });
 
         return () => socket.disconnect();
-    }, [currentTeam?.id]);
+    }, [currentTeam?.id, queryClient]);
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
