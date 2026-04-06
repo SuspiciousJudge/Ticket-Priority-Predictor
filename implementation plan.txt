@@ -1,0 +1,518 @@
+TicketPro Sidebar Expansion - Implementation Plan
+===============================================
+
+Date: April 6, 2026
+Scope: Prioritized sidebar and feature rollout aligned with current project maturity.
+
+Goal
+----
+Add high-impact sidebar sections first, then expand into advanced operations and platform capabilities in controlled phases.
+
+Phase 1 (Implement Now - Highest Value)
+----------------------------------------
+1. My Tickets
+   - Show tickets assigned to current logged-in user.
+   - Filters: Open, In Progress, Resolved.
+   - Sort: priority, created date, SLA deadline.
+   - Quick status updates from list cards/rows.
+   - Fields: title, priority badge, time remaining.
+
+2. Unassigned Tickets
+   - Show all unassigned tickets.
+   - Needs-attention indicator and urgency badge.
+   - Quick assign actions.
+   - Sorting: priority, created date, category.
+   - Bulk assign support.
+   - Sidebar count badge.
+
+3. High Priority / Urgent
+   - Show Critical + High only.
+   - SLA countdown timer and breach state.
+   - Red/orange urgency coding.
+   - Escalation status visibility.
+   - Quick actions: assign, comment, resolve.
+   - Default sort by urgency score.
+
+4. Notifications Center
+   - Unified notification feed.
+   - Types:
+     - Ticket assigned
+     - Status changed
+     - New comment / mention
+     - High priority created
+     - SLA warning
+     - Team updates
+   - Mark read/unread.
+   - Type filters.
+   - Realtime updates + unread badge.
+
+5. Quick Filters
+   - Open, In Progress, Pending, Resolved, Closed.
+   - Overdue.
+   - Today.
+   - This Week.
+
+6. Activity Feed / Audit Log
+   - Timeline: who did what, when.
+   - Ticket create/update/delete.
+   - Status and assignment changes.
+   - Comment activity.
+   - Filter by user/date/action.
+   - Export logs.
+
+Phase 2 (Implement Next - Strategic Operations)
+------------------------------------------------
+1. Reports
+   - Custom reports and templates:
+     - Daily/Weekly/Monthly
+     - Team performance
+     - Resolution time
+     - Priority distribution
+     - Category analysis
+   - Date range selector.
+   - Export PDF/CSV/Excel.
+   - Scheduled reports.
+
+2. Performance / Metrics
+   - Personal dashboard:
+     - Resolved today/week/month
+     - Avg resolution time
+     - Response time
+     - Priority mix
+     - Workload distribution
+   - Optional leaderboard.
+   - Goals and progress bars.
+
+3. SLA Management
+   - SLA policies by priority, customer tier, category.
+   - Response and resolution targets.
+   - Breach warning thresholds.
+   - Escalation policies.
+   - SLA reporting views.
+
+4. Saved Filters / Views
+   - Save named filter combinations.
+   - Share with team.
+   - Pin favorites.
+   - Quick open/edit/delete.
+
+5. Search / Command Palette
+   - Global search via Ctrl+K.
+   - Search across tickets, customers, team members, docs, settings.
+   - Instant results + recent searches.
+   - Keyboard navigation.
+
+Phase 3 (Implement Later - Platform Expansion)
+-----------------------------------------------
+1. Knowledge Base / Documentation
+2. Templates (ticket/response/email/macros)
+3. Automation / Workflows
+4. Integrations (Slack/Jira/webhooks/API keys)
+5. Calendar / Schedule
+6. Inbox / Email Tickets
+7. Customers / Contacts
+
+Recommended Sidebar Grouping
+----------------------------
+1. Work Queue
+   - My Tickets
+   - Unassigned
+   - High Priority
+
+2. Operations
+   - Quick Filters
+   - Saved Views
+   - Notifications
+
+3. Insights
+   - Analytics
+   - Reports
+   - Performance
+
+4. Governance
+   - Activity Log
+   - SLA Management
+
+5. Platform (Later)
+   - Knowledge Base
+   - Automations
+   - Integrations
+   - Calendar
+   - Customers
+
+Implementation Notes
+--------------------
+1. Phase 1 should be routed and visible in sidebar first.
+2. Reuse existing stats, ticket list APIs, and realtime socket invalidation where possible.
+3. Keep initial pages functional with MVP-grade interactions, then deepen workflows.
+4. Add role guards for governance-heavy sections (admin/lead) after first release.
+5. Update README and revision docs after each phase milestone.
+
+Acceptance Criteria for Phase 1
+-------------------------------
+1. New sidebar entries are visible and navigable.
+2. Each page loads real data from backend APIs.
+3. Filters and sorting are functional.
+4. Realtime changes reflect without manual refresh.
+5. No page crash on empty or partial data.
+6. Build and smoke checks pass.
+
+
+Detailed Module Specifications (Expanded)
+=========================================
+
+This section captures detailed UI/UX expectations for additional sections and aligns them to implementation phases.
+
+Phase Mapping for Expanded Modules
+----------------------------------
+Phase 2 (Strategic Operations)
+1. Reports
+2. Performance / Metrics
+3. Team (expanded tabs)
+4. Notifications (full center page)
+5. Saved Filters / Views
+6. Search / Command Palette
+7. SLA Management
+8. Settings (expanded controls)
+9. Help & Support
+
+Phase 3 (Platform Expansion)
+1. Knowledge Base / Documentation
+2. Customers / Contacts
+3. Calendar / Schedule
+4. Templates
+5. Automation / Workflows
+6. Integrations
+7. Inbox (Email Tickets)
+
+
+8. REPORTS (Phase 2)
+--------------------
+What user sees:
+1. Report templates list:
+   - Daily Summary Report
+   - Weekly Performance Report
+   - Monthly Analytics Report
+   - Team Productivity Report
+   - SLA Compliance Report
+   - Resolution Time Report
+   - Priority Distribution Report
+   - Customer Satisfaction Report
+2. Create Custom Report button.
+3. Report builder:
+   - Metrics multi-select (checkboxes)
+   - Date range selector
+   - Output format (PDF / Excel / CSV)
+   - Filters
+   - Preview report
+4. Scheduled reports section.
+5. Report history with download/email/share options.
+
+
+9. PERFORMANCE / METRICS (Phase 2)
+----------------------------------
+What user sees:
+1. Personal performance dashboard with stat cards:
+   - Resolved today
+   - Resolved this week
+   - Resolved this month
+   - Avg resolution time
+   - Response time
+   - Customer rating
+2. Goal progress bars.
+3. Comparison to team averages.
+4. Badges/achievements.
+5. Trend graph (last 30 days).
+6. Priority breakdown pie chart.
+7. Best performing days/hours.
+8. Areas for improvement panel.
+9. Optional leaderboard.
+
+
+10. TEAM (Phase 2 Enhancement)
+------------------------------
+Team page tab structure:
+1. Overview tab:
+   - Team stats (members, active tickets, avg MTTR)
+   - Team performance graph
+   - Workload distribution
+   - Member online/offline indicators
+2. Members tab:
+   - Avatar, name, role, email
+   - Active ticket count
+   - Online status and last active
+   - Add/remove member
+   - Edit role
+3. Workload tab:
+   - Bar chart by member load
+   - Capacity planning indicators
+   - Overload highlights
+   - Rebalance workload action
+4. Settings tab:
+   - Name, description, avatar/logo
+   - Default assignment rules
+   - Permissions
+   - Delete team
+
+
+11. NOTIFICATIONS (Phase 2 Expansion)
+-------------------------------------
+Notification center page:
+1. Unread count + Mark all as read.
+2. Filter tabs:
+   - All
+   - Unread
+   - Assigned
+   - Mentions
+   - Updates
+   - Alerts
+3. Notification list item design:
+   - Avatar/icon
+   - Message text
+   - Relative time
+   - Linked ticket preview
+   - Read/unread indicator
+   - Dismiss action
+4. Notification types:
+   - Assignment
+   - Comment
+   - Mention
+   - Status change
+   - Priority change
+   - High priority create
+   - SLA warning
+   - Resolution
+   - Customer reply
+5. Realtime socket updates.
+6. Notification settings link.
+
+
+12. KNOWLEDGE BASE / DOCUMENTATION (Phase 3)
+---------------------------------------------
+What user sees:
+1. Search bar across articles.
+2. Categories:
+   - Technical Issues
+   - Billing & Payments
+   - Product Features
+   - Getting Started
+   - FAQ
+3. Article list metadata:
+   - Title, summary, author, updated date, views, helpful votes
+4. Full article view:
+   - Rich content with images/code blocks
+   - TOC, related articles
+   - Helpful voting
+   - Comments
+5. Admin actions:
+   - Create article
+   - Edit/Delete article
+
+
+13. CUSTOMERS / CONTACTS (Phase 3)
+----------------------------------
+What user sees:
+1. Customer table:
+   - Name, email, phone, company
+   - Tier, total tickets, last contact, status
+2. Search and filters (tier/status).
+3. Sort options.
+4. Add customer action.
+5. Customer profile page:
+   - Full details and contacts
+   - Ticket history
+   - Notes/tags
+   - Activity timeline
+   - Edit/Delete
+6. Export and bulk actions (tag/delete/merge).
+
+
+14. CALENDAR / SCHEDULE (Phase 3)
+---------------------------------
+What user sees:
+1. Day/Week/Month views.
+2. Event overlays:
+   - Ticket deadlines
+   - Follow-ups
+   - Team meetings
+   - Maintenance windows
+   - On-call shifts
+3. Daily agenda from selected date.
+4. Event details modal.
+5. Add event action.
+6. Filter by event type.
+7. Google Calendar sync option.
+8. Team availability panel.
+9. Jump-to-today action.
+
+
+15. ACTIVITY FEED / AUDIT LOG (Phase 1 -> Phase 2 Deepening)
+-------------------------------------------------------------
+What user sees:
+1. Global activity timeline entries.
+2. Entry details:
+   - User avatar
+   - Action text
+   - Timestamp
+   - Ticket link
+   - Action icon
+3. Filters:
+   - User
+   - Action type
+   - Date range
+   - Ticket id
+4. Search activities.
+5. Export logs.
+6. Realtime auto-refresh.
+7. Pagination/load more.
+
+
+16. TEMPLATES (Phase 3)
+-----------------------
+What user sees:
+1. Tabs:
+   - Ticket Templates
+   - Response Templates
+   - Email Templates
+2. Template cards:
+   - Name, description, category
+   - Usage count
+   - Last modified
+   - Edit/Delete/Duplicate
+3. Create new template action.
+4. Template editor:
+   - Name
+   - Rich content
+   - Variables/placeholders
+   - Category
+   - Save/Cancel
+5. Quick insert and preview.
+
+
+17. AUTOMATION / WORKFLOWS (Phase 3)
+------------------------------------
+What user sees:
+1. Rule list with status toggles.
+2. Rule metadata:
+   - Name, trigger, action, last run, success count
+   - Edit/Delete
+3. Create automation builder:
+   - WHEN trigger
+   - IF conditions
+   - THEN actions
+4. Prebuilt automation templates.
+5. Test automation action.
+6. Automation logs/history.
+
+
+18. INTEGRATIONS (Phase 3)
+--------------------------
+What user sees:
+1. Integration catalog cards:
+   - Slack, Email, Jira, GitHub, Salesforce, Zapier, Zendesk, Webhook
+2. Connected integrations list:
+   - Status, last sync, settings, disconnect
+3. Integration settings view:
+   - API keys
+   - Config options
+   - Webhook URLs
+   - Test connection
+   - Sync preferences
+   - Activity logs
+4. Add custom integration option.
+
+
+19. SLA MANAGEMENT (Phase 2)
+----------------------------
+What user sees:
+1. SLA policy cards:
+   - Name
+   - Applied conditions (priority/tier/category)
+   - Response target
+   - Resolution target
+   - Compliance percentage
+   - Active ticket count
+   - Edit/Delete
+2. Create policy builder:
+   - Name and conditions
+   - Targets
+   - Escalation rules
+   - Notification settings
+   - Business hours
+3. SLA dashboard:
+   - Overall compliance
+   - Breached count
+   - At-risk count
+   - Policy performance
+4. SLA reports link.
+
+
+20. SETTINGS (Phase 2 Expansion)
+--------------------------------
+Sections:
+1. Profile: avatar, name/email, password, timezone, language.
+2. Preferences: email/desktop notifications, theme, default view, page size.
+3. Account: plan, usage, billing, upgrade.
+4. Team settings: team name, limits, permissions, default assignments.
+5. System: API keys, webhooks, security, data export, account deletion.
+6. Appearance: theme, accent, font size, layout density.
+
+
+21. HELP & SUPPORT (Phase 2)
+----------------------------
+What user sees:
+1. Help center links:
+   - Getting started
+   - Tutorials
+   - FAQ
+   - Documentation
+   - Contact support
+   - Feature request
+   - Bug report
+2. Quick help cards.
+3. Live chat widget entry.
+4. Community forum link.
+5. What's new panel.
+
+
+22. SAVED FILTERS / VIEWS (Phase 2)
+-----------------------------------
+What user sees:
+1. Saved filter list:
+   - Name
+   - Condition summary
+   - Matching count
+   - Favorite/pin
+   - Edit/Delete/Share
+2. Create filter builder:
+   - Name
+   - Conditions
+   - AND/OR logic
+   - Result count preview
+3. Pinned quick-access filters in sidebar.
+4. Recently used filters section.
+
+
+23. INBOX (EMAIL TICKETS) (Phase 3)
+-----------------------------------
+What user sees:
+1. Email-to-ticket inbox list:
+   - Subject, sender, preview, status, priority, unread state
+2. Thread view:
+   - Full chain
+   - Reply box
+   - Convert to ticket
+   - Merge with existing ticket
+   - Customer side panel
+3. Reply templates.
+4. Spam folder.
+5. Auto-categorization rules.
+6. Provider sync status.
+
+
+Execution Sequence (Recommended)
+--------------------------------
+1. Keep current Phase 1 delivery unchanged.
+2. Start Phase 2 with: Reports -> Notifications page -> Team tabs -> SLA Management -> Performance -> Saved Filters -> Search -> Settings/Help.
+3. Start Phase 3 with: Knowledge Base -> Templates -> Automation -> Integrations -> Inbox -> Customers -> Calendar.
+

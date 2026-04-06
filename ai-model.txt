@@ -11,6 +11,7 @@ April 2026 summary:
 3. Better confidence and reasoning output for transparency.
 4. Similar-ticket resolver enrichment with likely fix snippets.
 5. AI draft reply API added: POST /api/ai/draft-reply.
+6. Knowledge Base "Ask AI" workflow integrated with operational KB + Stack Overflow references.
 
 For full technical details, read:
 - ai model.txt

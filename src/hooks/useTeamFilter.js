@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useQuery } from '@tanstack/react-query';
@@ -11,38 +11,30 @@ export default function useTeamFilter() {
         queryKey: ['teams'],
         queryFn: teamsAPI.getAll,
         retry: false,
+        staleTime: 5 * 60 * 1000,
     });
 
-    // Extract the actual teams array from the API response
     const teams = teamsRes?.data?.data || [];
+    const isInitSync = useRef(false);
 
-    // On mount: read ?team= from URL and sync to store
+    // On mount: read ?team= from URL and sync to store (once)
     useEffect(() => {
-        if (!teams || teams.length === 0) return;
+        if (!teams || teams.length === 0 || isInitSync.current) return;
+        isInitSync.current = true;
+
         const teamParam = searchParams.get('team');
         if (teamParam && teamParam !== currentTeam?.id) {
             const matchedTeam = teams.find(t => (t._id || t.id) === teamParam);
             if (matchedTeam) {
                 setCurrentTeam({ id: matchedTeam._id || matchedTeam.id, name: matchedTeam.name, color: matchedTeam.color });
-            } else {
-                // team param doesn't match any real team — remove the stale param
-                setSearchParams(prev => {
-                    const next = new URLSearchParams(prev);
-                    next.delete('team');
-                    return next;
-                }, { replace: true });
-                // Clear stale team from store
-                if (currentTeam?.id === teamParam) {
-                    setCurrentTeam(null);
-                }
             }
         }
-    }, [searchParams, teams]);
+    }, [teams]);
 
-    // When currentTeam changes in the store, update the URL (only for real team IDs)
+    // When currentTeam changes in the store, update the URL
     useEffect(() => {
+        const current = searchParams.get('team');
         if (currentTeam?.id) {
-            const current = searchParams.get('team');
             if (current !== currentTeam.id) {
                 setSearchParams(prev => {
                     const next = new URLSearchParams(prev);
@@ -50,16 +42,12 @@ export default function useTeamFilter() {
                     return next;
                 }, { replace: true });
             }
-        } else {
-            // No team selected — remove the param
-            const current = searchParams.get('team');
-            if (current) {
-                setSearchParams(prev => {
-                    const next = new URLSearchParams(prev);
-                    next.delete('team');
-                    return next;
-                }, { replace: true });
-            }
+        } else if (current) {
+            setSearchParams(prev => {
+                const next = new URLSearchParams(prev);
+                next.delete('team');
+                return next;
+            }, { replace: true });
         }
     }, [currentTeam?.id]);
 }

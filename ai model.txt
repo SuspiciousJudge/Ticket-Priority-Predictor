@@ -418,6 +418,26 @@ Observed calibration targets after tuning:
 Operational impact:
 1. Better alignment with real ITSM triage expectations.
 2. Fewer under-prioritized severe incidents.
+
+
+16) April 2026 AI-Assisted UX Integration Notes
+-----------------------------------------------
+This section documents how AI model capabilities are surfaced into user workflows.
+
+Knowledge Base integration:
+1. Knowledge Base screen includes "Ask AI" action using POST /api/ai/chat.
+2. Prompting style is support-oriented and asks for actionable remediation steps.
+3. Responses are combined with curated Stack Overflow references for operator validation.
+
+Ticket-detail communication assist:
+1. AI Draft Reply endpoint is integrated into ticket workflows.
+2. Tone-aware drafting supports customer-facing updates (professional, empathetic, concise styles).
+3. Draft generation is non-blocking and does not affect ticket state transitions.
+
+Operational reliability behaviors:
+1. AI UX features are additive; core ticket CRUD remains fully functional without AI success.
+2. Model-health visibility remains available via /api/ai/model-health.
+3. Hybrid priority path continues to preserve escalation safety even during partial model degradation.
 3. More transparent reasoning for human operators.
 
 

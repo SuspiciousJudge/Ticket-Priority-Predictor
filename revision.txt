@@ -61,7 +61,6 @@ ta
 - Misc workspace file (not part of runtime path).
 
 dist/
-- Generated frontend production output.
 
 public/
 - Static assets served by Vite.
@@ -170,6 +169,62 @@ src/components/tickets/
 
 src/contexts/
 - React context containers (if used by current pages/components).
+
+16) April 2026 Frontend Navigation and Section Expansion
+--------------------------------------------------------
+This update delivered implementation-plan modules and corrected production navigation behavior.
+
+A) New Functional Pages Added (MVP)
+1. Work queue and operational views:
+  - src/pages/MyTickets.jsx
+  - src/pages/UnassignedTickets.jsx
+  - src/pages/UrgentTickets.jsx
+2. Insights and reporting views:
+  - src/pages/Reports.jsx
+  - src/pages/Performance.jsx
+  - src/pages/ActivityLog.jsx
+3. Platform and support views:
+  - src/pages/NotificationsCenter.jsx
+  - src/pages/SavedViews.jsx
+  - src/pages/Customers.jsx
+  - src/pages/CalendarSchedule.jsx
+  - src/pages/KnowledgeBase.jsx
+  - src/pages/TemplatesPage.jsx
+  - src/pages/Automations.jsx
+  - src/pages/Integrations.jsx
+  - src/pages/SLAManagement.jsx
+  - src/pages/HelpSupport.jsx
+  - src/pages/Inbox.jsx
+
+B) Navigation and Layout Stabilization
+1. Sidebar expanded with implementation-plan entries and role-aware visibility rules:
+  - src/components/layout/Sidebar.jsx
+2. Sidebar made reliably scrollable with full-height flex layout and min-height-safe nav region.
+3. Breadcrumb label map expanded for newly added pages:
+  - src/components/common/Breadcrumbs.jsx
+4. Topbar profile dropdown Help action now routes to Help page:
+  - src/components/layout/Topbar.jsx
+
+C) Route Mapping Hardening
+1. Added explicit route mappings and aliases for section names (for compatibility with old/deep links).
+2. Added deterministic protected-page rendering pattern to avoid fallback collisions.
+3. Included route aliases for common naming variants:
+  - high-priority -> urgent
+  - notifications-center -> notifications
+  - sla-management -> sla
+  - help-support -> help
+  - create-ticket -> create
+
+D) Supporting Utility Enhancements
+1. Added calculateSLAStatus helper for SLA cohort rendering and saved-view filtering:
+  - src/lib/utils.js
+2. Improved team URL/store synchronization stability in team filter hook:
+  - src/hooks/useTeamFilter.js
+
+E) UX Connectivity Improvements
+1. SLA Management now links directly to Saved Views cohorts (at-risk/breached).
+2. Notifications and knowledge/support pages use in-app route links for SPA-safe navigation.
+3. Module pages consume existing backend data and reuse realtime/React Query refresh patterns.
 
 src/data/mockData.js
 - Mock datasets used by analytics/dashboard/team views.

@@ -149,7 +149,7 @@ function ProfileDropdown({ isOpen, onClose, user, onLogout }) {
     const menuItems = [
         { icon: User, label: 'My Profile', action: () => { navigate('/settings'); onClose(); } },
         { icon: Settings, label: 'Settings', action: () => { navigate('/settings'); onClose(); } },
-        { icon: HelpCircle, label: 'Help & Support', action: () => onClose() },
+        { icon: HelpCircle, label: 'Help & Support', action: () => { navigate('/help'); onClose(); } },
     ];
 
     const fallbackName = user?.name || 'Guest User';

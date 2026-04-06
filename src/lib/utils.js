@@ -1,4 +1,4 @@
-﻿import { clsx } from 'clsx';
+import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 export function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -58,4 +58,24 @@ export function debounce(func, wait) {
 }
 export function generateId() {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+export function calculateSLAStatus(ticket) {
+    if (!ticket?.slaDeadline) {
+        return { status: 'met', remaining: null };
+    }
+    const now = new Date();
+    const deadline = new Date(ticket.slaDeadline);
+    const diff = deadline - now;
+    const hoursRemaining = diff / (1000 * 60 * 60);
+
+    if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
+        return { status: 'met', remaining: hoursRemaining };
+    }
+    if (diff <= 0) {
+        return { status: 'breached', remaining: hoursRemaining };
+    }
+    if (hoursRemaining <= 2) {
+        return { status: 'at_risk', remaining: hoursRemaining };
+    }
+    return { status: 'met', remaining: hoursRemaining };
 }

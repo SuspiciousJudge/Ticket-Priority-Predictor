@@ -302,3 +302,22 @@ Detailed docs:
 - Add CI workflow for lint/build/smoke tests.
 - Add integration tests for auth and ticket creation flows.
 - Add model evaluation metrics tracking for retraining decisions.
+
+## April 2026 Navigation and Module Rollout Update
+
+- Implemented expanded operations/platform pages and connected them to production data paths:
+	- My Tickets, Unassigned, Urgent Queue
+	- Reports, Performance, Activity Log
+	- Notifications Center, Saved Views
+	- Customers, Calendar/Schedule, Knowledge Base
+	- Templates, Automations, Integrations
+	- SLA Management, Help & Support, Inbox
+- Added role-aware sidebar visibility by user role (`admin`, `manager`, `agent`, `viewer`).
+- Added live sidebar badges for unread or queue counts (Inbox, Notifications, Unassigned, Urgent).
+- Added SLA to Saved Views deep-linking (`sla:at_risk`, `sla:breached`) with URL-based filter sync.
+- Improved navigation reliability:
+	- Added route aliases for implementation-plan naming variants.
+	- Hardened protected route behavior so section paths resolve to intended pages.
+	- Updated help navigation in profile dropdown to open Help & Support page directly.
+- Improved sidebar usability:
+	- Fixed full-height scroll behavior for long menu lists.

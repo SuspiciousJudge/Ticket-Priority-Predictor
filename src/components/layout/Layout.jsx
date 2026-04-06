@@ -32,7 +32,7 @@ const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
     ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
     : 'http://localhost:5000';
 
-export default function Layout() {
+export default function Layout({ children }) {
     const { sidebarCollapsed, currentTeam, bootstrapData } = useStore();
     const queryClient = useQueryClient();
     useTeamFilter();
@@ -90,7 +90,7 @@ export default function Layout() {
                 <main className="p-6">
                     <Suspense fallback={<PageLoader />}>
                         <PageTransition>
-                            <Outlet />
+                            {children || <Outlet />}
                         </PageTransition>
                     </Suspense>
                 </main>
