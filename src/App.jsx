@@ -1,47 +1,49 @@
-import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import Dashboard from './pages/Dashboard';
+import TicketList from './pages/TicketList';
+import TicketDetail from './pages/TicketDetail';
+import CreateTicket from './pages/CreateTicket';
+import Analytics from './pages/Analytics';
+import Team from './pages/Team';
+import Settings from './pages/Settings';
+import MyTickets from './pages/MyTickets';
+import UnassignedTickets from './pages/UnassignedTickets';
+import UrgentTickets from './pages/UrgentTickets';
+import Reports from './pages/Reports';
+import Performance from './pages/Performance';
+import NotificationsCenter from './pages/NotificationsCenter';
+import KnowledgeBase from './pages/KnowledgeBase';
+import Customers from './pages/Customers';
+import CalendarSchedule from './pages/CalendarSchedule';
+import ActivityLog from './pages/ActivityLog';
+import TemplatesPage from './pages/TemplatesPage';
+import Automations from './pages/Automations';
+import Integrations from './pages/Integrations';
+import SLAManagement from './pages/SLAManagement';
+import HelpSupport from './pages/HelpSupport';
+import SavedViews from './pages/SavedViews';
+import InboxPage from './pages/Inbox';
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Landing from './pages/Landing';
 import Toast from './components/common/Toast';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import { getStoredToken } from './services/api';
 
-// Lazy load pages for route-level code splitting
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const TicketList = lazy(() => import('./pages/TicketList'));
-const TicketDetail = lazy(() => import('./pages/TicketDetail'));
-const CreateTicket = lazy(() => import('./pages/CreateTicket'));
-const Analytics = lazy(() => import('./pages/Analytics'));
-const Team = lazy(() => import('./pages/Team'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Login = lazy(() => import('./pages/Login'));
-const SignUp = lazy(() => import('./pages/SignUp'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const Landing = lazy(() => import('./pages/Landing'));
+function AuthPageRedirect({ children }) {
+  const token = getStoredToken();
+  if (token) return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
-// All the missing page imports
-const Inbox = lazy(() => import('./pages/Inbox'));
-const MyTickets = lazy(() => import('./pages/MyTickets'));
-const UnassignedTickets = lazy(() => import('./pages/UnassignedTickets'));
-const UrgentTickets = lazy(() => import('./pages/UrgentTickets'));
-const SavedViews = lazy(() => import('./pages/SavedViews'));
-const Performance = lazy(() => import('./pages/Performance'));
-const Reports = lazy(() => import('./pages/Reports'));
-const NotificationsCenter = lazy(() => import('./pages/NotificationsCenter'));
-const ActivityLog = lazy(() => import('./pages/ActivityLog'));
-const Customers = lazy(() => import('./pages/Customers'));
-const CalendarSchedule = lazy(() => import('./pages/CalendarSchedule'));
-const KnowledgeBase = lazy(() => import('./pages/KnowledgeBase'));
-const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
-const Automations = lazy(() => import('./pages/Automations'));
-const Integrations = lazy(() => import('./pages/Integrations'));
-const SLAManagement = lazy(() => import('./pages/SLAManagement'));
-const HelpSupport = lazy(() => import('./pages/HelpSupport'));
-
-function FullPageLoader() {
+function ProtectedPage({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-bg">
-      <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
+    <ProtectedRoute>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
   );
 }
 
@@ -49,49 +51,58 @@ function App() {
   return (
     <BrowserRouter>
       <Toast />
-      <Suspense fallback={<FullPageLoader />}>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/landing" element={<Navigate to="/" replace />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="inbox" element={<Inbox />} />
-              <Route path="tickets" element={<TicketList />} />
-              <Route path="tickets/:id" element={<TicketDetail />} />
-              <Route path="create" element={<CreateTicket />} />
-              <Route path="my-tickets" element={<MyTickets />} />
-              <Route path="unassigned" element={<UnassignedTickets />} />
-              <Route path="urgent" element={<UrgentTickets />} />
-              <Route path="saved-views" element={<SavedViews />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="performance" element={<Performance />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="notifications" element={<NotificationsCenter />} />
-              <Route path="activity-log" element={<ActivityLog />} />
-              <Route path="customers" element={<Customers />} />
-              <Route path="calendar" element={<CalendarSchedule />} />
-              <Route path="knowledge-base" element={<KnowledgeBase />} />
-              <Route path="templates" element={<TemplatesPage />} />
-              <Route path="automations" element={<Automations />} />
-              <Route path="integrations" element={<Integrations />} />
-              <Route path="sla" element={<SLAManagement />} />
-              <Route path="help" element={<HelpSupport />} />
-              <Route path="team" element={<Team />} />
-              <Route path="team/manage" element={<Team />} />
-              <Route path="settings" element={<Settings />} />
-              {/* Catch-all redirect to Dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Route>
-        </Routes>
-      </Suspense>
+        <Route path="/login" element={<AuthPageRedirect><Login /></AuthPageRedirect>} />
+        <Route path="/signup" element={<AuthPageRedirect><SignUp /></AuthPageRedirect>} />
+        <Route path="/forgot-password" element={<AuthPageRedirect><ForgotPassword /></AuthPageRedirect>} />
+        <Route path="/reset-password" element={<AuthPageRedirect><ResetPassword /></AuthPageRedirect>} />
+
+        <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+        <Route path="/inbox" element={<ProtectedPage><InboxPage /></ProtectedPage>} />
+        <Route path="/inbox-email" element={<Navigate to="/inbox" replace />} />
+        <Route path="/tickets" element={<ProtectedPage><TicketList /></ProtectedPage>} />
+        <Route path="/tickets/:id" element={<ProtectedPage><TicketDetail /></ProtectedPage>} />
+        <Route path="/create" element={<ProtectedPage><CreateTicket /></ProtectedPage>} />
+        <Route path="/create-ticket" element={<Navigate to="/create" replace />} />
+        <Route path="/my-tickets" element={<ProtectedPage><MyTickets /></ProtectedPage>} />
+        <Route path="/mytickets" element={<Navigate to="/my-tickets" replace />} />
+        <Route path="/unassigned" element={<ProtectedPage><UnassignedTickets /></ProtectedPage>} />
+        <Route path="/unassigned-tickets" element={<Navigate to="/unassigned" replace />} />
+        <Route path="/urgent" element={<ProtectedPage><UrgentTickets /></ProtectedPage>} />
+        <Route path="/high-priority" element={<Navigate to="/urgent" replace />} />
+        <Route path="/urgent-tickets" element={<Navigate to="/urgent" replace />} />
+        <Route path="/saved-views" element={<ProtectedPage><SavedViews /></ProtectedPage>} />
+        <Route path="/saved-filters" element={<Navigate to="/saved-views" replace />} />
+        <Route path="/saved-filters-views" element={<Navigate to="/saved-views" replace />} />
+        <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
+        <Route path="/reports" element={<ProtectedPage><Reports /></ProtectedPage>} />
+        <Route path="/performance" element={<ProtectedPage><Performance /></ProtectedPage>} />
+        <Route path="/activity-log" element={<ProtectedPage><ActivityLog /></ProtectedPage>} />
+        <Route path="/activity" element={<Navigate to="/activity-log" replace />} />
+        <Route path="/audit-log" element={<Navigate to="/activity-log" replace />} />
+        <Route path="/notifications" element={<ProtectedPage><NotificationsCenter /></ProtectedPage>} />
+        <Route path="/notifications-center" element={<Navigate to="/notifications" replace />} />
+        <Route path="/customers" element={<ProtectedPage><Customers /></ProtectedPage>} />
+        <Route path="/calendar" element={<ProtectedPage><CalendarSchedule /></ProtectedPage>} />
+        <Route path="/knowledge-base" element={<ProtectedPage><KnowledgeBase /></ProtectedPage>} />
+        <Route path="/knowledge" element={<Navigate to="/knowledge-base" replace />} />
+        <Route path="/templates" element={<ProtectedPage><TemplatesPage /></ProtectedPage>} />
+        <Route path="/automations" element={<ProtectedPage><Automations /></ProtectedPage>} />
+        <Route path="/workflows" element={<Navigate to="/automations" replace />} />
+        <Route path="/integrations" element={<ProtectedPage><Integrations /></ProtectedPage>} />
+        <Route path="/sla" element={<ProtectedPage><SLAManagement /></ProtectedPage>} />
+        <Route path="/sla-management" element={<Navigate to="/sla" replace />} />
+        <Route path="/help" element={<ProtectedPage><HelpSupport /></ProtectedPage>} />
+        <Route path="/help-support" element={<Navigate to="/help" replace />} />
+        <Route path="/team" element={<ProtectedPage><Team /></ProtectedPage>} />
+        <Route path="/team/manage" element={<Navigate to="/team" replace />} />
+        <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 }
