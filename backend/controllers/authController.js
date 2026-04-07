@@ -6,12 +6,18 @@ const User = require('../models/User');
 const SALT_ROUNDS = process.env.NODE_ENV === 'production' ? 10 : 8;
 
 const generateToken = (user) => {
-  return jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: process.env.JWT_EXPIRE || '7d' });
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is required');
+  }
+  return jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 };
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+    }
 
     const exists = await User.findOne({ email: email.toLowerCase() });
     if (exists) {
@@ -24,7 +30,7 @@ exports.register = async (req, res, next) => {
 
     const salt = await bcrypt.genSalt(SALT_ROUNDS);
     const hashed = await bcrypt.hash(password, salt);
-    const user = await User.create({ name: name.trim(), email: email.toLowerCase(), password: hashed, role });
+    const user = await User.create({ name: name.trim(), email: email.toLowerCase(), password: hashed, role: 'agent' });
     const token = generateToken(user);
 
     res.json({
@@ -60,6 +66,10 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
     const match = await bcrypt.compare(password, user.password);
@@ -89,6 +99,10 @@ exports.logout = async (req, res) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(200).json({ success: true, message: 'If that email exists, we sent reset instructions' });
+    }
+
     const user = await User.findOne({ email: email.toLowerCase() });
     // Always return success to prevent email enumeration
     if (!user) return res.status(200).json({ success: true, message: 'If that email exists, we sent reset instructions' });
@@ -101,11 +115,10 @@ exports.forgotPassword = async (req, res, next) => {
     user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
     await user.save();
 
-    // In production, send email with reset link. For dev, return the token.
+    // In production, email delivery should be used instead of returning token payloads.
     res.json({
       success: true,
-      message: 'Password reset token generated (dev mode — in production this would be emailed)',
-      data: { resetToken },
+      message: 'If that email exists, we sent reset instructions',
     });
   } catch (err) { next(err); }
 };

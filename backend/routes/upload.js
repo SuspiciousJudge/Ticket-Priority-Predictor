@@ -23,10 +23,24 @@ const localStorage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|csv|xlsx/;
-  const extOk = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimeOk = allowedTypes.test(file.mimetype.split('/')[1]) || file.mimetype === 'application/pdf' || file.mimetype.includes('document') || file.mimetype.includes('sheet');
-  if (extOk || mimeOk) return cb(null, true);
+  const allowedExtensions = new Set(['.jpeg', '.jpg', '.png', '.gif', '.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx']);
+  const allowedMimes = new Set([
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain',
+    'text/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ]);
+
+  const ext = path.extname(file.originalname).toLowerCase();
+  const extOk = allowedExtensions.has(ext);
+  const mimeOk = allowedMimes.has(file.mimetype);
+  if (extOk && mimeOk) return cb(null, true);
   cb(new Error('File type not allowed'));
 };
 
@@ -54,7 +68,7 @@ router.post('/', auth, upload.array('files', 5), async (req, res, next) => {
           resource_type: 'auto',
         });
         // Clean up local temp file
-        fs.unlinkSync(file.path);
+        await fs.promises.unlink(file.path);
         results.push({
           filename: file.originalname,
           url: result.secure_url,
@@ -65,7 +79,7 @@ router.post('/', auth, upload.array('files', 5), async (req, res, next) => {
         // Local storage
         results.push({
           filename: file.originalname,
-          url: `/uploads/${file.filename}`,
+          url: `/api/upload/files/${file.filename}`,
           size: file.size,
         });
       }
@@ -74,6 +88,28 @@ router.post('/', auth, upload.array('files', 5), async (req, res, next) => {
     res.json({ success: true, data: results });
   } catch (err) {
     next(err);
+  }
+});
+
+router.get('/files/:filename', auth, async (req, res, next) => {
+  try {
+    const fileName = path.basename(req.params.filename || '');
+    if (!fileName) {
+      return res.status(400).json({ success: false, message: 'Invalid filename' });
+    }
+
+    const filePath = path.join(uploadsDir, fileName);
+    if (!filePath.startsWith(uploadsDir)) {
+      return res.status(400).json({ success: false, message: 'Invalid file path' });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+
+    return res.sendFile(filePath);
+  } catch (err) {
+    return next(err);
   }
 });
 

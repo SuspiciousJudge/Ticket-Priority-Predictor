@@ -204,6 +204,32 @@ This enables dashboard/list updates without full page refreshes.
 - Centralized error handling middleware
 - Model fallback path to prevent AI-related downtime
 
+### April 2026 Security Hardening Update
+
+- Removed insecure JWT fallback behavior and enforced startup env validation for JWT secret quality.
+- Implemented route-level and controller-level RBAC/BOLA protections for users, teams, tickets, and AI routes.
+- Added endpoint-specific rate limiting policies:
+	- General API: 1000 requests/hour/IP
+	- Auth routes: 100 requests/15 minutes/IP
+	- AI routes: 30 requests/5 minutes/IP
+	- Export routes: 30 requests/15 minutes/IP
+- Hardened forgot-password flow to avoid reset token disclosure.
+- Reduced error leakage by making stack traces opt-in for explicit local debugging.
+- Hardened upload security:
+	- stricter extension + MIME validation
+	- authenticated file retrieval endpoint (/api/upload/files/:filename)
+	- disabled public upload static serving by default
+- Added endpoint inventory snapshot:
+	- backend/endpoint-inventory.txt
+- Added security CI workflow:
+	- .github/workflows/security-ci.yml
+	- Includes npm audit gates, Semgrep SAST, and OWASP ZAP baseline DAST.
+
+Dependency audit status after remediation:
+
+- Root/frontend: 0 vulnerabilities (npm audit --audit-level=high)
+- Backend: 0 vulnerabilities (npm audit --audit-level=high)
+
 ## AI Model Notes
 
 Current ML method:

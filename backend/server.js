@@ -3,12 +3,12 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const dbReady = require('./middleware/dbReady');
+const { generalApiLimiter } = require('./middleware/rateLimiters');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -20,11 +20,33 @@ const aiRoutes = require('./routes/ai');
 
 const app = express();
 
+function assertRequiredEnv() {
+  const required = ['JWT_SECRET'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  if ((process.env.JWT_SECRET || '').length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long');
+  }
+}
+
+assertRequiredEnv();
+
 // Connect DB
 connectDB();
 
 // Middleware
-app.use(helmet());
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
+app.use(helmet({
+  hsts: process.env.NODE_ENV === 'production',
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 // CORS
 const allowedOrigins = [
@@ -49,12 +71,21 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+if (process.env.NODE_ENV === 'production' && process.env.ENFORCE_HTTPS === 'true') {
+  app.use((req, res, next) => {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    if (forwardedProto === 'https') return next();
+    return res.status(403).json({ success: false, message: 'HTTPS is required' });
+  });
+}
 
 // Rate limiter
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
-app.use(limiter);
+app.use('/api', generalApiLimiter);
+
+// Serve uploaded files statically only when explicitly enabled for local dev.
+if (process.env.ENABLE_PUBLIC_UPLOADS === 'true') {
+  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+}
 
 // Mount API
 // Health

@@ -1,0 +1,58 @@
+Active Endpoint Inventory - 2026-04-07
+
+Mounted API Routers
+- /api/auth
+- /api/tickets
+- /api/teams
+- /api/users
+- /api/upload
+- /api/ai
+
+Public Endpoints
+- GET /api/health
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/auth/forgot-password
+- POST /api/auth/reset-password/:token
+
+Auth Endpoints
+- GET /api/auth/me
+- POST /api/auth/logout
+
+Ticket Endpoints
+- GET /api/tickets/stats
+- GET /api/tickets/export-csv
+- GET /api/tickets/executive-snapshot
+- GET /api/tickets/:id/similar
+- GET /api/tickets/:id
+- POST /api/tickets/:id/comments
+- PUT /api/tickets/:id
+- DELETE /api/tickets/:id
+- GET /api/tickets
+- POST /api/tickets
+
+Team Endpoints
+- GET /api/teams
+- GET /api/teams/:id
+- POST /api/teams
+- PUT /api/teams/:id
+- DELETE /api/teams/:id
+- POST /api/teams/:id/members
+- DELETE /api/teams/:id/members/:userId
+
+User Endpoints
+- GET /api/users
+- GET /api/users/:id
+- PUT /api/users/:id
+- GET /api/users/:id/tickets
+- GET /api/users/:id/performance
+
+Upload Endpoints
+- POST /api/upload
+- GET /api/upload/files/:filename
+
+AI Endpoints
+- GET /api/ai/model-health
+- POST /api/ai/chat
+- POST /api/ai/suggest-priority
+- POST /api/ai/draft-reply

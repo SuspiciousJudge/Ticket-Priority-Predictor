@@ -6,6 +6,33 @@ const mongoose = require('mongoose');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 
+const PRIVILEGED_ROLES = new Set(['admin', 'manager']);
+
+function isValidObjectId(value) {
+  return mongoose.Types.ObjectId.isValid(value);
+}
+
+function escapeRegExp(value = '') {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isPrivileged(user) {
+  return !!user && PRIVILEGED_ROLES.has(user.role);
+}
+
+function buildTicketScope(user) {
+  if (!user) return { _id: null };
+  if (user.role === 'admin') return {};
+
+  if (user.role === 'manager') {
+    const scope = [{ assignee: user._id }, { createdBy: user._id }];
+    if (user.team) scope.push({ team: user.team });
+    return { $or: scope };
+  }
+
+  return { $or: [{ assignee: user._id }, { createdBy: user._id }] };
+}
+
 function tokenizeText(text = '') {
   return String(text)
     .toLowerCase()
@@ -137,7 +164,9 @@ const PLAYBOOKS = {
 exports.getAll = async (req, res, next) => {
   try {
     const { priority, status, team, search, sort = 'createdAt', order = 'desc', page = 1, limit = 20 } = req.query;
-    const query = {};
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+    const query = { ...buildTicketScope(req.user) };
     if (priority) {
       const priorities = String(priority).split(',').map((p) => p.trim()).filter(Boolean);
       query.priority = priorities.length > 1 ? { $in: priorities } : priorities[0];
@@ -146,8 +175,27 @@ exports.getAll = async (req, res, next) => {
       const statuses = String(status).split(',').map((s) => s.trim()).filter(Boolean);
       query.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
     }
-    if (team && mongoose.Types.ObjectId.isValid(team)) query.team = team;
-    if (search) query.$or = [{ title: new RegExp(search, 'i') }, { description: new RegExp(search, 'i') }, { ticketId: new RegExp(search, 'i') }];
+    if (team && isValidObjectId(team)) {
+      if (req.user.role === 'manager' && req.user.team && String(team) !== String(req.user.team)) {
+        return res.status(403).json({ success: false, message: 'Forbidden team scope' });
+      }
+      if (!isPrivileged(req.user) && req.user.team && String(team) !== String(req.user.team)) {
+        return res.status(403).json({ success: false, message: 'Forbidden team scope' });
+      }
+      query.team = team;
+    }
+
+    if (search) {
+      const safeSearch = escapeRegExp(search);
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: new RegExp(safeSearch, 'i') },
+          { description: new RegExp(safeSearch, 'i') },
+          { ticketId: new RegExp(safeSearch, 'i') },
+        ],
+      });
+    }
 
     // Build sort object
     const sortObj = {};
@@ -156,23 +204,27 @@ exports.getAll = async (req, res, next) => {
     sortObj[sortField] = order === 'asc' ? 1 : -1;
 
     const total = await Ticket.countDocuments(query);
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / safeLimit);
     const tickets = await Ticket.find(query)
       .sort(sortObj)
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
+      .skip((safePage - 1) * safeLimit)
+      .limit(safeLimit)
       .populate('assignee', 'name email avatar')
       .populate('createdBy', 'name email')
       .populate('team', 'name color initials')
       .lean();
 
-    res.json({ success: true, data: { tickets, totalPages, currentPage: Number(page), total } });
+    res.json({ success: true, data: { tickets, totalPages, currentPage: safePage, total } });
   } catch (err) { next(err); }
 };
 
 exports.getById = async (req, res, next) => {
   try {
-    const ticket = await Ticket.findById(req.params.id)
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket id' });
+    }
+
+    const ticket = await Ticket.findOne({ _id: req.params.id, ...buildTicketScope(req.user) })
       .populate('assignee', 'name email avatar role')
       .populate('createdBy', 'name email')
       .populate('team', 'name color initials')
@@ -212,10 +264,23 @@ exports.create = async (req, res, next) => {
       description,
     });
 
+    let resolvedTeamId = null;
+    if (teamId && isValidObjectId(teamId)) {
+      if (isPrivileged(req.user)) {
+        resolvedTeamId = teamId;
+      } else if (req.user.team && String(req.user.team) === String(teamId)) {
+        resolvedTeamId = teamId;
+      }
+    } else if (req.user.team) {
+      resolvedTeamId = req.user.team;
+    }
+
     // Suggest assignee by expertise
     let suggested = null;
     if (ai.tags && ai.tags.length > 0) {
-      const users = await User.find({ expertise: { $in: ai.tags } });
+      const assigneeQuery = { expertise: { $in: ai.tags } };
+      if (resolvedTeamId) assigneeQuery.team = resolvedTeamId;
+      const users = await User.find(assigneeQuery);
       suggested = users[0] || null;
     }
 
@@ -228,7 +293,7 @@ exports.create = async (req, res, next) => {
       category,
       customerTier: normalizedCustomerTier,
       assignee: suggested ? suggested._id : null,
-      team: teamId || null,
+      team: resolvedTeamId,
       createdBy: req.user ? req.user._id : null,
       sentiment: ai.sentiment,
       confidence: ai.confidence,
@@ -267,19 +332,31 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket id' });
+    }
+
+    const ticket = await Ticket.findOne({ _id: req.params.id, ...buildTicketScope(req.user) });
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
 
     const prevPriority = ticket.priority;
     const prevStatus = ticket.status;
 
-    Object.assign(ticket, req.body);
+    const allowedFields = ['title', 'description', 'status', 'category', 'affectedUsers', 'attachments', 'tags', 'estimatedTime'];
+    const privilegedFields = ['priority', 'team', 'assignee', 'customerTier', 'resolutionTime', 'slaDeadline'];
+    const fields = isPrivileged(req.user) ? [...allowedFields, ...privilegedFields] : allowedFields;
 
-    if (req.body.priority) {
+    for (const key of fields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        ticket[key] = req.body[key];
+      }
+    }
+
+    if (req.body.priority && isPrivileged(req.user)) {
       ticket.slaDeadline = getSlaDeadline(req.body.priority);
     }
 
-    if (req.body.priority && req.body.priority !== prevPriority) {
+    if (req.body.priority && req.body.priority !== prevPriority && isPrivileged(req.user)) {
       ticket.priorityOverrideAudit = ticket.priorityOverrideAudit || [];
       ticket.priorityOverrideAudit.push({
         from: prevPriority,
@@ -331,8 +408,13 @@ exports.update = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
-    const ticket = await Ticket.findByIdAndDelete(req.params.id);
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket id' });
+    }
+
+    const ticket = await Ticket.findOne({ _id: req.params.id, ...buildTicketScope(req.user) });
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    await ticket.deleteOne();
     res.json({ success: true, message: 'Ticket deleted' });
   } catch (err) { next(err); }
 };
@@ -341,7 +423,11 @@ exports.addComment = async (req, res, next) => {
   try {
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ success: false, message: 'Comment text required' });
-    const ticket = await Ticket.findById(req.params.id);
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket id' });
+    }
+
+    const ticket = await Ticket.findOne({ _id: req.params.id, ...buildTicketScope(req.user) });
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
     ticket.comments.push({ author: req.user ? req.user._id : null, text: text.trim() });
     await ticket.save();
@@ -358,8 +444,14 @@ exports.addComment = async (req, res, next) => {
 exports.stats = async (req, res, next) => {
   try {
     const { team } = req.query;
-    const match = {};
+    const match = { ...buildTicketScope(req.user) };
     if (team && mongoose.Types.ObjectId.isValid(team)) {
+      if (req.user.role === 'manager' && req.user.team && String(team) !== String(req.user.team)) {
+        return res.status(403).json({ success: false, message: 'Forbidden team scope' });
+      }
+      if (!isPrivileged(req.user) && req.user.team && String(team) !== String(req.user.team)) {
+        return res.status(403).json({ success: false, message: 'Forbidden team scope' });
+      }
       match.team = new mongoose.Types.ObjectId(team);
     }
 
@@ -621,13 +713,18 @@ exports.stats = async (req, res, next) => {
 
 exports.similar = async (req, res, next) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket id' });
+    }
+
+    const scope = buildTicketScope(req.user);
+    const ticket = await Ticket.findOne({ _id: req.params.id, ...scope });
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
 
     const baseText = `${ticket.title || ''} ${ticket.description || ''}`.trim();
     const baseTf = termFrequency(tokenizeText(baseText));
 
-    const candidates = await Ticket.find({ _id: { $ne: ticket._id } })
+    const candidates = await Ticket.find({ ...scope, _id: { $ne: ticket._id } })
       .select('ticketId title description priority status createdAt updatedAt assignee comments')
       .populate('assignee', 'name email avatar')
       .lean();
@@ -658,7 +755,7 @@ exports.similar = async (req, res, next) => {
 
 exports.exportCsv = async (req, res, next) => {
   try {
-    const tickets = await Ticket.find()
+    const tickets = await Ticket.find(buildTicketScope(req.user))
       .populate('assignee', 'email')
       .populate('team', 'name')
       .lean();
@@ -675,11 +772,12 @@ exports.exportCsv = async (req, res, next) => {
 
 exports.executiveSnapshotPdf = async (req, res, next) => {
   try {
+    const match = buildTicketScope(req.user);
     const [total, byPriority, byStatus, topCategories] = await Promise.all([
-      Ticket.countDocuments(),
-      Ticket.aggregate([{ $group: { _id: '$priority', count: { $sum: 1 } } }]),
-      Ticket.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
-      Ticket.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
+      Ticket.countDocuments(match),
+      Ticket.aggregate([{ $match: match }, { $group: { _id: '$priority', count: { $sum: 1 } } }]),
+      Ticket.aggregate([{ $match: match }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Ticket.aggregate([{ $match: match }, { $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
     ]);
 
     const doc = new PDFDocument({ margin: 40 });

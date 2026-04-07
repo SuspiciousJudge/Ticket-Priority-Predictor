@@ -1,14 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/authorize');
 const Ticket = require('../models/Ticket');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { getModelHealth } = require('../utils/mlPredict');
+const { aiLimiter } = require('../middleware/rateLimiters');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+function normalizeText(value, maxLen) {
+  return String(value || '').trim().slice(0, maxLen);
+}
+
 // GET /api/ai/model-health
-router.get('/model-health', auth, async (req, res, next) => {
+router.get('/model-health', auth, authorize('admin', 'manager'), aiLimiter, async (req, res, next) => {
   try {
     const health = await getModelHealth();
     return res.json({ success: true, data: health });
@@ -18,13 +24,21 @@ router.get('/model-health', auth, async (req, res, next) => {
 });
 
 // POST /api/ai/chat
-router.post('/chat', auth, async (req, res, next) => {
+router.post('/chat', auth, aiLimiter, async (req, res, next) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+    const message = normalizeText(req.body?.message, 4000);
+    const conversationHistory = Array.isArray(req.body?.conversationHistory) ? req.body.conversationHistory.slice(-20) : [];
 
-    if (!message || !message.trim()) {
+    if (!message) {
       return res.status(400).json({ success: false, message: 'Message is required' });
     }
+
+    const safeHistory = conversationHistory
+      .filter((msg) => msg && (msg.role === 'user' || msg.role === 'assistant'))
+      .map((msg) => ({
+        role: msg.role,
+        content: normalizeText(msg.content, 2000),
+      }));
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({ success: false, message: 'AI service not configured. Please set GEMINI_API_KEY.' });
@@ -88,7 +102,7 @@ ${statsContext}${ticketContext}`;
 
     // Build conversation for Gemini
     const chat = model.startChat({
-      history: conversationHistory.map(msg => ({
+      history: safeHistory.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }],
       })),
@@ -115,9 +129,10 @@ ${statsContext}${ticketContext}`;
 });
 
 // POST /api/ai/suggest-priority — Quick priority suggestion without full chat
-router.post('/suggest-priority', auth, async (req, res, next) => {
+router.post('/suggest-priority', auth, aiLimiter, async (req, res, next) => {
   try {
-    const { title, description } = req.body;
+    const title = normalizeText(req.body?.title, 500);
+    const description = normalizeText(req.body?.description, 4000);
     if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
 
     if (!process.env.GEMINI_API_KEY) {
@@ -147,9 +162,11 @@ Description: ${description || 'No description provided'}`;
 });
 
 // POST /api/ai/draft-reply
-router.post('/draft-reply', auth, async (req, res, next) => {
+router.post('/draft-reply', auth, aiLimiter, async (req, res, next) => {
   try {
-    const { ticketTitle, ticketDescription, tone = 'professional' } = req.body;
+    const ticketTitle = normalizeText(req.body?.ticketTitle, 500);
+    const ticketDescription = normalizeText(req.body?.ticketDescription, 4000);
+    const tone = normalizeText(req.body?.tone || 'professional', 30);
     if (!ticketTitle) {
       return res.status(400).json({ success: false, message: 'ticketTitle is required' });
     }

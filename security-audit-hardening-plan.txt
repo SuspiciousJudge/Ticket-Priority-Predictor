@@ -1,0 +1,272 @@
+Ticket Priority Predictor - Security Audit and Hardening Plan
+Date: 2026-04-07
+Scope: backend (Express/Mongo), frontend (Vite/React), deployment/CI
+Assumption: code is insecure by default until validated in runtime tests
+
+================================================================
+0) Immediate High-Risk Findings (from initial code read)
+================================================================
+1. JWT secret fallback is insecure:
+   - File: backend/middleware/auth.js
+   - Current: jwt.verify(token, process.env.JWT_SECRET || 'secret')
+   - Risk: predictable token signing key if env var missing.
+
+2. Register endpoint allows caller-controlled role:
+   - File: backend/controllers/authController.js
+   - Current: User.create(..., role)
+   - Risk: privilege escalation by self-registering as admin.
+
+3. Error responses can leak stack traces:
+   - File: backend/middleware/errorHandler.js
+   - Current: stack returned in development OR when NODE_ENV is missing.
+   - Risk: sensitive internals exposed when env misconfigured.
+
+4. Forgot password returns reset token in response:
+   - File: backend/controllers/authController.js
+   - Current: returns resetToken in API payload.
+   - Risk: account takeover if endpoint/logs/interceptors are exposed.
+
+5. Auth middleware returns internal error message:
+   - File: backend/middleware/auth.js
+   - Current: returns err.message to client.
+   - Risk: token verification details leak.
+
+6. Uploads served from static route without explicit auth gate:
+   - File: backend/server.js (app.use('/uploads', express.static(...)))
+   - Risk: unintended file disclosure if predictable filenames exist.
+
+================================================================
+1) Priority-Ordered Remediation Plan
+================================================================
+P0 (same day): block critical auth/secret/data leaks
+P1 (1-2 days): RBAC/BOLA enforcement and endpoint hardening
+P2 (2-4 days): runtime validation, DAST, CI/CD security gates
+P3 (ongoing): continuous retest after every AI-generated change
+
+----------------------------------------------------------------
+P0. Authentication and Secrets Hardening
+----------------------------------------------------------------
+A. Remove insecure JWT fallback and fail fast at startup.
+   Files:
+   - backend/server.js
+   - backend/middleware/auth.js
+   - backend/controllers/authController.js
+
+   Required behavior:
+   - Server must refuse to start if JWT_SECRET is missing/weak.
+   - Use only process.env.JWT_SECRET (no fallback).
+
+B. Enforce strict authentication before sensitive logic.
+   Files:
+   - backend/server.js
+   - backend/routes/*.js
+
+   Required behavior:
+   - Confirm all non-public endpoints require auth middleware.
+   - Keep public allow-list explicit: /api/health, /api/auth/login, /api/auth/register, /api/auth/forgot-password, /api/auth/reset-password/:token.
+
+C. Stop secret/token leakage in responses and logs.
+   Files:
+   - backend/controllers/authController.js
+   - backend/middleware/errorHandler.js
+   - backend/middleware/auth.js
+
+   Required behavior:
+   - forgot-password returns generic success, never token.
+   - auth errors return generic message only.
+   - stack traces only in controlled local debug mode (never by default).
+
+D. Lock registration role assignment.
+   Files:
+   - backend/controllers/authController.js
+   - backend/models/User.js
+
+   Required behavior:
+   - Ignore role from request body on register.
+   - Force default role = "agent" (or least privilege).
+
+----------------------------------------------------------------
+P1. Authorization, BOLA, Endpoint Exposure, Input Safety
+----------------------------------------------------------------
+A. Implement RBAC middleware and route policy map.
+   Create:
+   - backend/middleware/authorize.js
+
+   Apply to:
+   - backend/routes/users.js
+   - backend/routes/teams.js
+   - backend/routes/tickets.js
+   - backend/routes/ai.js
+
+   Minimum policy:
+   - admin: full access
+   - manager: team-scoped management
+   - agent/user: self + assigned resources only
+
+B. Add object-level authorization checks in controllers.
+   Files:
+   - backend/controllers/ticketController.js
+   - backend/controllers/userController.js
+   - backend/controllers/teamController.js
+
+   Required behavior:
+   - Users can access only own/assigned tickets unless elevated role.
+   - Users cannot read/update other user profiles unless admin.
+   - Team membership operations require manager/admin of that team.
+
+C. Endpoint inventory and exposure cleanup.
+   Files:
+   - backend/server.js
+   - backend/routes/*.js
+
+   Actions:
+   - Enumerate all registered routes and methods.
+   - Remove legacy/unused endpoints not reachable from current product scope.
+   - Disable or protect any debug/test endpoints.
+
+D. Input validation upgrade (assume AI validation is incomplete).
+   Files:
+   - backend/middleware/validation.js
+   - all route files using body/query/params
+
+   Actions:
+   - Validate all params/query/body with schema validators.
+   - Enforce ObjectId format checks for :id routes.
+   - Reject unknown fields where feasible.
+
+E. Injection and code execution resistance.
+   Files:
+   - backend/controllers/*
+   - backend/utils/*
+   - backend/scripts/*
+
+   Actions:
+   - Review all Mongo queries for user-controlled operators ($where, $regex, $ne abuse).
+   - Add query sanitization and strict filtering.
+   - Ensure no child_process/system command paths from request input.
+   - Verify file upload handling restricts mime/type/size and path traversal.
+
+----------------------------------------------------------------
+P2. Transport, Runtime, Logging, Dependency Risk
+----------------------------------------------------------------
+A. Transport security and headers.
+   Files:
+   - backend/server.js
+
+   Actions:
+   - Harden Helmet config (CSP tuned for frontend/API usage).
+   - Add HSTS for production.
+   - Add request size limits (already present; verify all parsers).
+   - Trust proxy when behind ingress and enforce HTTPS redirect in prod.
+
+B. Rate limiting policy (global + endpoint-specific).
+   Files:
+   - backend/server.js
+   - backend/routes/auth.js
+   - backend/routes/ai.js
+
+   Baseline policy:
+   - General API: 1000 requests/hour/IP
+   - Auth login/register/forgot/reset: 100 requests/15 min/IP
+   - AI and export endpoints: stricter burst limits (example 30/5 min)
+
+C. Dependency and supply chain checks.
+   Files:
+   - package.json
+   - backend/package.json
+
+   Actions:
+   - Run npm audit in root and backend.
+   - Add automated dependency scanning in CI.
+   - Verify runtime behavior of high-risk packages (auth, upload, AI, PDF, CSV).
+
+D. Logging and error handling hygiene.
+   Files:
+   - backend/middleware/errorHandler.js
+   - backend/server.js
+
+   Actions:
+   - Structured logs with redaction for Authorization, tokens, API keys.
+   - Remove verbose console logging of internal objects in prod.
+   - Correlation IDs for incident tracing.
+
+----------------------------------------------------------------
+P3. Continuous Testing and Change Management
+----------------------------------------------------------------
+A. Security regression suite for every AI-generated change.
+   Add:
+   - API auth tests (unauthenticated requests must fail)
+   - RBAC/BOLA tests
+   - malformed payload fuzz tests
+   - secret-leak assertions in responses/logs
+
+B. Integrate DAST into pipeline.
+   Recommended:
+   - OWASP ZAP baseline scan against staged app
+
+C. CI/CD security gates.
+   Suggested pipeline order:
+   1) Lint + unit tests
+   2) SAST (semgrep/eslint-security or equivalent)
+   3) Dependency audit
+   4) Build
+   5) Start app in test mode
+   6) API integration tests
+   7) DAST (ZAP baseline)
+   8) Fail release on critical/high findings
+
+D. Deployment as new risk event.
+   - Re-run security checks on every deploy and after prompt iterations.
+   - Maintain exception register with expiry dates.
+
+================================================================
+2) Exact Fixes to Implement First (Code Change Queue)
+================================================================
+Queue-1 (highest):
+- Remove JWT fallback secret and add startup env validation.
+- Remove role from register body handling.
+- Remove reset token from forgot-password response.
+- Make error handler safe by default; no stack unless explicit local debug flag.
+- Return generic auth failure responses.
+
+Queue-2:
+- Add authorize(role...) middleware and apply route-level RBAC.
+- Add BOLA checks inside ticket/user/team controllers.
+- Restrict /uploads exposure (signed URLs or auth-checked download endpoint).
+
+Queue-3:
+- Per-route rate limiters and stricter auth limiter.
+- Header and HTTPS production hardening.
+- CI security workflow with SAST/dependency/DAST.
+
+================================================================
+3) Files Needed for Full Deep Audit (next step)
+================================================================
+Please provide/confirm these for full implementation pass:
+- backend/controllers/ticketController.js
+- backend/controllers/userController.js
+- backend/controllers/teamController.js
+- backend/controllers/authController.js (already reviewed)
+- backend/middleware/auth.js (already reviewed)
+- backend/middleware/errorHandler.js (already reviewed)
+- backend/middleware/validation.js (already reviewed)
+- backend/models/User.js
+- backend/models/Ticket.js
+- backend/models/Team.js
+- backend/routes/upload.js
+- backend/config/db.js
+- backend/config/cloudinary.js
+- src/services/api.js (frontend token handling)
+- Any deployment config (.env.example, Dockerfile, reverse proxy config, CI workflows)
+
+================================================================
+4) Acceptance Criteria (audit complete means all true)
+================================================================
+- Unauthenticated requests blocked for all protected endpoints.
+- RBAC enforced and verified by tests for every endpoint.
+- BOLA tests confirm peer/admin data cannot be accessed improperly.
+- No secrets/tokens in API responses or logs.
+- Rate limiting active and validated on auth + general + expensive endpoints.
+- Security headers and HTTPS behavior verified in production profile.
+- Dependency and DAST scans run in CI and block on high/critical issues.
+- Security regression suite passes after every AI-generated code iteration.

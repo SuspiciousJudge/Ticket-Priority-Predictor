@@ -1,0 +1,106 @@
+Security Testing Commands (Windows/PowerShell friendly)
+Date: 2026-04-07
+
+Assumptions:
+- Backend runs on http://localhost:5000
+- API prefix is /api
+- TOKEN_USER and TOKEN_ADMIN are valid JWTs for test accounts
+
+================================================================
+1) Dependency and static checks
+================================================================
+# Frontend dependencies
+npm audit --production
+npm audit
+
+# Backend dependencies
+cd backend
+npm audit --production
+npm audit
+
+# Optional strict fail on high/critical
+npm audit --audit-level=high
+
+================================================================
+2) Authentication enforcement checks
+================================================================
+# Should fail with 401 without token
+curl -i http://localhost:5000/api/tickets
+curl -i http://localhost:5000/api/users
+curl -i http://localhost:5000/api/teams
+curl -i http://localhost:5000/api/ai/model-health
+
+# Should pass with token
+curl -i http://localhost:5000/api/tickets -H "Authorization: Bearer %TOKEN_USER%"
+
+================================================================
+3) BOLA and RBAC checks
+================================================================
+# User attempts to read another user's profile (should be 403 or filtered)
+curl -i http://localhost:5000/api/users/OTHER_USER_ID -H "Authorization: Bearer %TOKEN_USER%"
+
+# Non-admin attempts privileged action (should fail)
+curl -i -X DELETE http://localhost:5000/api/teams/TEAM_ID -H "Authorization: Bearer %TOKEN_USER%"
+
+# Admin action should pass
+curl -i -X DELETE http://localhost:5000/api/teams/TEAM_ID -H "Authorization: Bearer %TOKEN_ADMIN%"
+
+================================================================
+4) Rate limit checks
+================================================================
+# Burst login attempts to trigger limiter
+for /L %i in (1,1,120) do curl -s -o NUL -w "%{http_code}\n" -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"test@example.com\",\"password\":\"badpass\"}"
+
+# Verify 429 appears and Retry-After header exists
+
+================================================================
+5) Input fuzz and malformed payload checks
+================================================================
+# Invalid JSON payload
+curl -i -X POST http://localhost:5000/api/tickets -H "Authorization: Bearer %TOKEN_USER%" -H "Content-Type: application/json" -d "{invalid_json}"
+
+# Oversized payload check
+curl -i -X POST http://localhost:5000/api/tickets -H "Authorization: Bearer %TOKEN_USER%" -H "Content-Type: application/json" -d "{\"title\":\"A\",\"description\":\"<very large string>\"}"
+
+# Mongo operator injection attempt
+curl -i -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":{\"$ne\":null},\"password\":\"x\"}"
+
+================================================================
+6) Headers and transport checks
+================================================================
+# Inspect security headers
+curl -I http://localhost:5000/api/health
+
+# Expect in production profile:
+# - Strict-Transport-Security
+# - X-Frame-Options
+# - X-Content-Type-Options
+# - Content-Security-Policy (as configured)
+
+================================================================
+7) DAST (OWASP ZAP baseline) suggestion
+================================================================
+# Example with Docker (if available)
+docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://host.docker.internal:5000 -r zap-report.html
+
+# In CI: fail build when high-risk alerts exist (parse report)
+
+================================================================
+8) Log leak checks
+================================================================
+# Search for leaked secrets/tokens in logs (adjust log path)
+findstr /I /C:"Authorization" /C:"Bearer" /C:"JWT" /C:"API_KEY" /C:"password" backend\\*.log
+
+# Validate responses do NOT include stack traces in non-local profiles
+curl -i http://localhost:5000/api/non-existent-route
+
+================================================================
+9) Endpoint inventory quick extraction
+================================================================
+# List route declarations in backend
+cd backend
+findstr /S /N /I "router.get router.post router.put router.delete app.use('/api" routes\\*.js server.js
+
+# Compare against frontend usage
+cd ..
+findstr /S /N /I "api/" src\\*.js src\\*.jsx src\\services\\*.js

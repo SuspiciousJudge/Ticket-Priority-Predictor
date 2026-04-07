@@ -518,6 +518,69 @@ F) Analytics Realtime, Stability and Feature Expansion
   - Agent performance cards (resolved/open/rate/avg resolution)
   - Reopen analytics by category
   - Priority override audit summary
+
+
+17) April 2026 Security Hardening and Vulnerability Remediation
+---------------------------------------------------------------
+This section captures the full security pass completed across backend, runtime configuration, and dependency supply chain.
+
+A) Authentication and Secret Handling Hardening
+1. Removed insecure JWT fallback key usage; JWT now requires explicit environment configuration.
+2. Added startup fail-fast checks for required JWT secret and minimum entropy length.
+3. Removed auth error detail leakage in token failures.
+4. Prevented password reset token leakage in forgot-password responses.
+5. Enforced least-privilege registration path by ignoring caller-provided role and defaulting to agent.
+
+B) Authorization and BOLA Controls
+1. Added reusable RBAC middleware:
+  - backend/middleware/authorize.js
+2. Applied route-level role restrictions for high-risk endpoints (users list, team management, AI health, exports).
+3. Added object-level ownership/team scoping in controllers to prevent cross-user data access.
+4. Hardened update endpoints against mass-assignment by allowlisting mutable fields.
+
+C) API Abuse and Input Safety Controls
+1. Added centralized rate limit policies:
+  - General API limiter (default 1000 requests/hour/IP)
+  - Auth limiter (default 100 requests/15 minutes/IP)
+  - AI limiter (default 30 requests/5 minutes/IP)
+  - Heavy export limiter (default 30 requests/15 minutes/IP)
+2. Added ObjectId validation guardrails on ticket/user/team access paths.
+3. Added safer search handling with escaped regex to reduce regex abuse risk.
+4. Added AI payload normalization and request size sanity caps for chat/suggestion/draft routes.
+
+D) Upload and Data Exposure Hardening
+1. Tightened upload allowlist to require BOTH approved extension and MIME type.
+2. Replaced local public file URL exposure with authenticated download endpoint:
+  - GET /api/upload/files/:filename
+3. Disabled public static upload serving by default; opt-in via environment flag only.
+
+E) Transport and Error Surface Hardening
+1. Added production HTTPS enforcement toggle (proxy-aware via x-forwarded-proto).
+2. Added trust-proxy toggle for reverse-proxy deployments.
+3. Tuned helmet usage and made stack trace exposure opt-in with EXPOSE_STACK_TRACES=true in development only.
+
+F) Endpoint Governance and Visibility
+1. Created backend endpoint inventory artifact:
+  - backend/endpoint-inventory.txt
+2. Captured mounted routers, public endpoints, and protected route groups for ongoing audit diffing.
+
+G) Dependency Risk Remediation and Supply Chain Security
+1. Resolved frontend vulnerability chain in lockfile dependencies.
+2. Resolved backend high-risk dependency issues by:
+  - upgrading cloudinary to secure major version
+  - removing unused multer-storage-cloudinary dependency with vulnerable peer constraints
+3. Verified current audit state:
+  - root npm audit --audit-level=high -> 0 vulnerabilities
+  - backend npm audit --audit-level=high -> 0 vulnerabilities
+
+H) CI/CD Security Automation
+1. Added GitHub Actions security workflow:
+  - .github/workflows/security-ci.yml
+2. Workflow includes:
+  - dependency audit gates
+  - Semgrep SAST
+  - OWASP ZAP baseline DAST against running backend
+3. Pipeline fails on high-risk findings to prevent insecure merges.
   - Executive snapshot export (PDF)
 
 G) New Feature Foundations (Requested Product Enhancements)
