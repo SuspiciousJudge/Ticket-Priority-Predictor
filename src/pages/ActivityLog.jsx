@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { ticketsAPI } from '../services/api';
 import Card from '../components/common/Card';
 import { formatRelativeTime } from '../lib/utils';
@@ -12,8 +13,8 @@ export default function ActivityLog() {
   const activities = useMemo(() => {
     const all = (ticketsData || []).flatMap((t) => {
       const list = [];
-      list.push({ id: `${t._id}-created`, type: 'created', text: `Ticket ${t.ticketId} created`, at: t.createdAt, ticketId: t._id, user: t.createdBy?.name || 'System' });
-      list.push({ id: `${t._id}-updated`, type: 'updated', text: `Ticket ${t.ticketId} status: ${t.status}`, at: t.updatedAt || t.createdAt, ticketId: t._id, user: t.assignee?.name || 'System' });
+      list.push({ id: `${t._id}-created`, type: 'created', text: `Ticket ${t.ticketId} created`, at: t.createdAt, ticketId: t._id, ticketNo: t.ticketId, title: t.title, status: t.status, priority: t.priority, user: t.createdBy?.name || 'System' });
+      list.push({ id: `${t._id}-updated`, type: 'updated', text: `Ticket ${t.ticketId} status: ${t.status}`, at: t.updatedAt || t.createdAt, ticketId: t._id, ticketNo: t.ticketId, title: t.title, status: t.status, priority: t.priority, user: t.assignee?.name || 'System' });
       return list;
     }).sort((a, b) => new Date(b.at) - new Date(a.at));
 
@@ -46,8 +47,9 @@ export default function ActivityLog() {
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">{a.text}</p>
                 <p className="text-xs text-gray-500">{a.user} · {formatRelativeTime(a.at)}</p>
+                <p className="text-xs text-gray-500 mt-1">{a.title} · {a.status} · {a.priority}</p>
               </div>
-              <a href={`/tickets/${a.ticketId}`} className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700">Open</a>
+              <Link to={`/tickets/${a.ticketId}`} className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700">Open</Link>
             </div>
           ))}
           {activities.length === 0 && <p className="text-sm text-gray-500">No activities found.</p>}

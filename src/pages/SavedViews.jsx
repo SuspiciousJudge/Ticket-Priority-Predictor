@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ticketsAPI } from '../services/api';
 import Card from '../components/common/Card';
 import { calculateSLAStatus } from '../lib/utils';
@@ -110,7 +110,9 @@ export default function SavedViews() {
         <h3 className="font-semibold mb-2">Preview Result ({currentResult.length})</h3>
         <div className="space-y-1 max-h-64 overflow-y-auto">
           {currentResult.slice(0, 100).map((t) => (
-            <a key={t._id} href={`/tickets/${t._id}`} className="block px-3 py-2 rounded border bg-white dark:bg-dark-surface text-sm hover:border-primary-300">{t.ticketId} · {t.title}</a>
+            <Link key={t._id} to={`/tickets/${t._id}`} className="block rounded border bg-white px-3 py-2 text-sm hover:border-primary-300 dark:bg-dark-surface">
+              {t.ticketId} · {t.title}
+            </Link>
           ))}
         </div>
       </Card>

@@ -5,6 +5,7 @@ import Topbar from './Topbar';
 import Breadcrumbs from '../common/Breadcrumbs';
 import PageTransition from '../common/PageTransition';
 import AIAssistantWidget from '../common/AIAssistantWidget';
+import TeamChatWidget from '../common/TeamChatWidget';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import useTeamFilter from '../../hooks/useTeamFilter';
@@ -28,9 +29,7 @@ function PageLoader() {
     );
 }
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL 
-    ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
-    : 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || window.location.origin;
 
 export default function Layout({ children }) {
     const { sidebarCollapsed, currentTeam, bootstrapData } = useStore();
@@ -42,7 +41,7 @@ export default function Layout({ children }) {
     }, [bootstrapData]);
 
     useEffect(() => {
-        const socket = io(SOCKET_URL, { withCredentials: true });
+        const socket = io(SOCKET_URL, { withCredentials: true, path: '/socket.io' });
         
         if (currentTeam?.id) {
             socket.emit('join_team', currentTeam.id);
@@ -96,6 +95,7 @@ export default function Layout({ children }) {
                 </main>
             </div>
             <AIAssistantWidget />
+            <TeamChatWidget />
         </div>
     );
 }

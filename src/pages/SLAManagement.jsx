@@ -27,6 +27,16 @@ export default function SLAManagement() {
         <p className="text-gray-600 dark:text-gray-400">Track SLA compliance and monitor at-risk or breached tickets.</p>
       </div>
 
+      <Card className="p-4 space-y-2">
+        <h3 className="font-semibold">What SLA Management Covers</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Define target response and resolution times, keep working hours aligned to policy, and surface escalation cohorts quickly when risks or breaches appear.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div className="rounded-lg border bg-white dark:bg-dark-bg p-3">Response targets: critical, high, medium, low</div>
+          <div className="rounded-lg border bg-white dark:bg-dark-bg p-3">Policy access: working hours, overrides, breach rules</div>
+          <div className="rounded-lg border bg-white dark:bg-dark-bg p-3">Quick actions: at-risk, breached, and saved cohorts</div>
+        </div>
+      </Card>
+
       <Card className="p-4 flex items-center justify-between flex-wrap gap-2">
         <div className="text-sm text-gray-600 dark:text-gray-400">Policy</div>
         <select value={policy} onChange={(e) => setPolicy(e.target.value)} className="px-3 py-2 border rounded-lg bg-white dark:bg-dark-bg">

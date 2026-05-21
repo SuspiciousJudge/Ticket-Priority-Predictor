@@ -149,6 +149,33 @@ select {
   background: rgba(30, 41, 59, 0.9);
 }
 
+.trending-swiper .swiper-button-next,
+.trending-swiper .swiper-button-prev {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-top: 0;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.trending-swiper .swiper-button-prev {
+  left: 0.25rem;
+}
+
+.trending-swiper .swiper-button-next {
+  right: 0.25rem;
+}
+
+.trending-swiper .swiper-button-next::after,
+.trending-swiper .swiper-button-prev::after {
+  font-size: 0.875rem;
+}
+
+.trending-swiper {
+  padding-inline: 0.5rem;
+}
+
 /* Line clamp utility */
 .line-clamp-2 {
   display: -webkit-box;

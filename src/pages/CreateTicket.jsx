@@ -8,7 +8,7 @@ import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { useStore } from '../store/useStore';
-import { ticketsAPI, uploadAPI, aiAPI } from '../services/api';
+import { ticketsAPI, uploadAPI, aiAPI, usersAPI } from '../services/api';
 import { cn, generateId } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -44,7 +44,7 @@ export default function CreateTicket() {
     const [showSimilar, setShowSimilar] = useState(false);
 
     const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
-        defaultValues: { title: '', description: '', category: '', customerTier: '', priority: '', tags: '' }
+        defaultValues: { title: '', description: '', category: '', customerTier: '', priority: '', assignee: '', tags: '' }
     });
 
     const watchTitle = watch('title');
@@ -57,6 +57,18 @@ export default function CreateTicket() {
         queryFn: () => ticketsAPI.getAll({ search: watchTitle, limit: 5 }).then(res => res.data.data),
         enabled: !!watchTitle && watchTitle.length > 8,
         staleTime: 60 * 1000,
+    });
+
+    const { data: usersData } = useQuery({
+        queryKey: ['users-create-ticket'],
+        queryFn: () => usersAPI.getAll().then((res) => res.data?.data || []),
+        staleTime: 60 * 1000,
+    });
+
+    const assignableMembers = (usersData || []).filter((user) => {
+        if (!currentTeam?.id) return true;
+        const userTeamId = user?.team?._id || user?.team || null;
+        return userTeamId && String(userTeamId) === String(currentTeam.id);
     });
     const similarTickets = (similarTicketsResponse?.tickets || []).slice(0, 5);
 
@@ -174,6 +186,7 @@ export default function CreateTicket() {
                 category: data.category || aiPrediction?.category,
                 customerTier: data.customerTier || undefined,
                 priority: data.priority || aiPrediction?.priority,
+                assignee: data.assignee || undefined,
                 tags: data.tags ? data.tags.split(',').map(t => t.trim()) : [],
                 team: currentTeam?.id || undefined,
                 attachments,
@@ -250,6 +263,22 @@ export default function CreateTicket() {
                                     </select>
                                     <p className="text-xs text-gray-500 mt-1">You can override the AI prediction.</p>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign To Member</label>
+                                <select
+                                    {...register('assignee')}
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                >
+                                    <option value="">Auto-assign by AI</option>
+                                    {assignableMembers.map((member) => (
+                                        <option key={member._id} value={member._id}>
+                                            {member.name} ({member.role})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">Select a team member now or leave empty for AI suggestion.</p>
                             </div>
 
                             {/* Description */}

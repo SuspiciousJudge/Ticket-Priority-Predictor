@@ -98,18 +98,24 @@ Rules:
 - Keep responses under 300 words unless asked for detail
 ${statsContext}${ticketContext}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-    // Build conversation for Gemini
-    const chat = model.startChat({
-      history: safeHistory.map(msg => ({
+    const formattedHistory = safeHistory
+      .map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }],
-      })),
-      systemInstruction: systemPrompt,
+      }))
+      .filter((msg, idx, arr) => {
+        if (idx === 0) return msg.role === 'user';
+        return true;
+      });
+
+    const chat = model.startChat({
+      history: formattedHistory,
     });
 
-    const result = await chat.sendMessage(message);
+    const userMessageWithContext = `${systemPrompt}\n\nUser query: ${message}`;
+    const result = await chat.sendMessage(userMessageWithContext);
     const response = result.response.text();
 
     res.json({

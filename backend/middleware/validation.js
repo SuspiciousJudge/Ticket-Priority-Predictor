@@ -2,7 +2,7 @@ const { body, validationResult } = require('express-validator');
 
 exports.registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
-  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
   body('password')
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
     .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
@@ -27,7 +27,7 @@ exports.registerValidation = [
 ];
 
 exports.loginValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
   body('password').notEmpty().withMessage('Password required'),
   (req, res, next) => {
     const errors = validationResult(req);

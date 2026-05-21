@@ -6,14 +6,14 @@ import Button from '../components/common/Button';
 import { Download, Mail, Share2 } from 'lucide-react';
 
 const templates = [
-  'Daily Summary Report',
-  'Weekly Performance Report',
-  'Monthly Analytics Report',
-  'Team Productivity Report',
-  'SLA Compliance Report',
-  'Resolution Time Report',
-  'Priority Distribution Report',
-  'Customer Satisfaction Report',
+  { name: 'Daily Summary Report', format: 'PDF', description: 'Open tickets, updates, and daily actions.' },
+  { name: 'Weekly Performance Report', format: 'Excel', description: 'Team throughput, resolution, and workload.' },
+  { name: 'Monthly Analytics Report', format: 'PDF', description: 'Month-over-month trends and SLA view.' },
+  { name: 'Team Productivity Report', format: 'Excel', description: 'Agent output, queues, and ticket volume.' },
+  { name: 'SLA Compliance Report', format: 'PDF', description: 'Targets met, risks, breaches, and policy overview.' },
+  { name: 'Resolution Time Report', format: 'CSV', description: 'Average time-to-resolve by category and priority.' },
+  { name: 'Priority Distribution Report', format: 'CSV', description: 'Ticket mix by priority and channel.' },
+  { name: 'Customer Satisfaction Report', format: 'PDF', description: 'Feedback trends and response quality.' },
 ];
 
 export default function Reports() {
@@ -21,6 +21,7 @@ export default function Reports() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [format, setFormat] = useState('PDF');
+  const [selectedTemplate, setSelectedTemplate] = useState(templates[0]);
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem('report-history') || '[]'); } catch { return []; }
   });
@@ -41,7 +42,7 @@ export default function Reports() {
   };
 
   const generate = () => {
-    const item = { id: Date.now(), selectedMetrics, fromDate, toDate, format, generatedAt: new Date().toISOString() };
+    const item = { id: Date.now(), template: selectedTemplate.name, selectedMetrics, fromDate, toDate, format: format || selectedTemplate.format, generatedAt: new Date().toISOString() };
     const next = [item, ...history].slice(0, 20);
     setHistory(next);
     localStorage.setItem('report-history', JSON.stringify(next));
@@ -67,8 +68,14 @@ export default function Reports() {
 
       <Card className="p-6">
         <h3 className="font-semibold mb-3">Report Templates</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {templates.map((t) => <div key={t} className="px-3 py-2 rounded-lg border bg-gray-50 dark:bg-dark-border/30 text-sm">{t}</div>)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {templates.map((t) => (
+            <button key={t.name} onClick={() => { setSelectedTemplate(t); setFormat(t.format); }} className={`text-left px-4 py-3 rounded-xl border transition-colors ${selectedTemplate.name === t.name ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'bg-gray-50 dark:bg-dark-border/30 hover:border-primary-300'}`}>
+              <p className="font-medium text-gray-900 dark:text-white">{t.name}</p>
+              <p className="text-xs text-gray-500 mt-1">{t.description}</p>
+              <p className="text-[11px] font-semibold text-primary-600 mt-2">Standard format: {t.format}</p>
+            </button>
+          ))}
         </div>
       </Card>
 
@@ -76,7 +83,7 @@ export default function Reports() {
         <h3 className="font-semibold">Create Custom Report</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {['total', 'resolved', 'critical', 'avgResolution'].map((m) => (
-            <label key={m} className="text-sm flex items-center gap-2"><input type="checkbox" checked={selectedMetrics.includes(m)} onChange={() => toggleMetric(m)} />{m}</label>
+            <label key={m} className="text-sm flex items-center gap-2 rounded-lg border px-3 py-2 bg-white dark:bg-dark-bg"><input type="checkbox" checked={selectedMetrics.includes(m)} onChange={() => toggleMetric(m)} />{m}</label>
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -87,7 +94,7 @@ export default function Reports() {
           </select>
         </div>
         <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-border/30 text-sm">
-          <p className="font-medium mb-1">Preview</p>
+          <p className="font-medium mb-1">Preview · {selectedTemplate.name}</p>
           {selectedMetrics.includes('total') && <p>Total tickets: {preview.total}</p>}
           {selectedMetrics.includes('resolved') && <p>Resolved tickets: {preview.resolved}</p>}
           {selectedMetrics.includes('critical') && <p>Critical tickets: {preview.critical}</p>}
@@ -96,12 +103,16 @@ export default function Reports() {
         <div className="flex items-center gap-2">
           <Button onClick={generate}>Generate</Button>
           <Button variant="outline" icon={Download} onClick={downloadCsv}>Download CSV</Button>
+          <Button variant="outline" onClick={() => setFormat(selectedTemplate.format)}>Use Template Format</Button>
         </div>
       </Card>
 
       <Card className="p-6">
         <h3 className="font-semibold mb-3">Scheduled Reports</h3>
-        <p className="text-sm text-gray-500">Scheduling UI is ready. Connect cron/worker to run automated generation.</p>
+        <p className="text-sm text-gray-500 mb-3">Scheduling UI is ready. Connect cron/worker to run automated generation.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {['Daily at 08:00', 'Weekly on Monday', 'Monthly on day 1'].map((slot) => <div key={slot} className="rounded-lg border bg-white dark:bg-dark-bg px-3 py-2 text-sm">{slot}</div>)}
+        </div>
       </Card>
 
       <Card className="p-6">
@@ -111,7 +122,7 @@ export default function Reports() {
             {history.map((h) => (
               <div key={h.id} className="p-3 border rounded-lg flex items-center justify-between gap-2">
                 <div className="text-sm">
-                  <p className="font-medium">{h.format} report · {new Date(h.generatedAt).toLocaleString()}</p>
+                  <p className="font-medium">{h.template || 'Custom'} · {h.format} · {new Date(h.generatedAt).toLocaleString()}</p>
                   <p className="text-gray-500">Metrics: {h.selectedMetrics.join(', ')}</p>
                 </div>
                 <div className="flex items-center gap-2">

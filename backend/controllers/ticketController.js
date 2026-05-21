@@ -30,6 +30,10 @@ function buildTicketScope(user) {
     return { $or: scope };
   }
 
+  if (user.team) {
+    return { $or: [{ team: user.team }, { assignee: user._id }, { createdBy: user._id }] };
+  }
+
   return { $or: [{ assignee: user._id }, { createdBy: user._id }] };
 }
 
@@ -249,7 +253,7 @@ exports.getById = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { title, description, category, customerTier, team: teamId, attachments, priority: requestedPriority, affectedUsers } = req.body;
+    const { title, description, category, customerTier, team: teamId, assignee: requestedAssignee, attachments, priority: requestedPriority, affectedUsers } = req.body;
     const ticketId = generateTicketId();
     const ai = await predictPriority(title, description, customerTier);
     const allowedPriorities = ['Critical', 'High', 'Medium', 'Low'];
@@ -275,9 +279,23 @@ exports.create = async (req, res, next) => {
       resolvedTeamId = req.user.team;
     }
 
+    let selectedAssigneeId = null;
+    if (requestedAssignee && isValidObjectId(requestedAssignee)) {
+      const requestedUser = await User.findById(requestedAssignee).select('_id team').lean();
+      if (requestedUser) {
+        const assigneeInResolvedTeam = resolvedTeamId && requestedUser.team && String(requestedUser.team) === String(resolvedTeamId);
+        const isPrivilegedCreator = isPrivileged(req.user);
+        const isSelfAssignment = String(requestedUser._id) === String(req.user?._id);
+
+        if (isPrivilegedCreator || isSelfAssignment || assigneeInResolvedTeam) {
+          selectedAssigneeId = requestedUser._id;
+        }
+      }
+    }
+
     // Suggest assignee by expertise
     let suggested = null;
-    if (ai.tags && ai.tags.length > 0) {
+    if (!selectedAssigneeId && ai.tags && ai.tags.length > 0) {
       const assigneeQuery = { expertise: { $in: ai.tags } };
       if (resolvedTeamId) assigneeQuery.team = resolvedTeamId;
       const users = await User.find(assigneeQuery);
@@ -292,7 +310,7 @@ exports.create = async (req, res, next) => {
       status: 'Open',
       category,
       customerTier: normalizedCustomerTier,
-      assignee: suggested ? suggested._id : null,
+      assignee: selectedAssigneeId || (suggested ? suggested._id : null),
       team: resolvedTeamId,
       createdBy: req.user ? req.user._id : null,
       sentiment: ai.sentiment,

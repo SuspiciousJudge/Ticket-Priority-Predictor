@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import CountUp from 'react-countup';
+import CountUpModule from 'react-countup';
 import {
   ArrowRight,
   Brain,
@@ -20,7 +20,11 @@ import {
 } from 'lucide-react';
 
 function SectionReveal({ children, className = '', delay = 0 }) {
-  const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.15 });
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.15,
+    fallbackInView: true,
+  });
   return (
     <motion.div
       ref={ref}
@@ -35,11 +39,18 @@ function SectionReveal({ children, className = '', delay = 0 }) {
 }
 
 function StatCounter({ end, suffix = '', label }) {
-  const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.4 });
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.4,
+    fallbackInView: true,
+  });
+
+  const fallbackValue = Number.isFinite(end) ? end.toLocaleString('en-US') : String(end);
+
   return (
     <div ref={ref} className="rounded-2xl border border-white/30 bg-white/70 p-6 shadow-lg backdrop-blur-xl">
       <div className="text-4xl font-extrabold tracking-tight text-slate-900">
-        {inView ? <CountUp end={end} duration={2.2} separator="," /> : 0}
+        {inView && CountUp ? <CountUp end={end} duration={2.2} separator="," /> : fallbackValue}
         {suffix}
       </div>
       <div className="mt-2 text-sm font-medium text-slate-600">{label}</div>
@@ -79,6 +90,15 @@ const testimonials = [
   },
 ];
 
+const CountUp =
+  typeof CountUpModule === 'function'
+    ? CountUpModule
+    : typeof CountUpModule?.default === 'function'
+      ? CountUpModule.default
+      : typeof CountUpModule?.default?.default === 'function'
+        ? CountUpModule.default.default
+        : null;
+
 export default function Landing() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -103,9 +123,10 @@ export default function Landing() {
   }, [headline]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
-    window.addEventListener('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 

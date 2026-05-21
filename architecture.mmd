@@ -1,0 +1,9 @@
+graph TD
+    A[Raw Ticket Data] --> B(Feature Extraction Pipeline)
+    B --> C{ONNX Runtime}
+    C -->|Random Forest| D[Model Priority]
+    B --> E{Heuristic Fallback Engine}
+    E -->|Rules & Weights| F[Heuristic Priority]
+    D --> G(Max Severity Aggregator)
+    F --> G
+    G --> H[Final Output Priority & Confidence]

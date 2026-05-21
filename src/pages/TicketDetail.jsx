@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle, Sparkles, Siren, FileWarning, Bot } from 'lucide-react';
@@ -11,6 +11,13 @@ import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import { ticketsAPI, aiAPI } from '../services/api';
 import { formatDate, formatRelativeTime, cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+
+const toolMap = [
+    { key: 'jira', label: 'Jira', href: 'https://jira.company.example', keywords: ['jira', 'bug', 'sprint', 'story'] },
+    { key: 'codebase', label: 'Codebase', href: '/knowledge-base', keywords: ['login', 'auth', 'codebase', 'repository'] },
+    { key: 'knowledge', label: 'Knowledge Base', href: '/knowledge-base', keywords: ['docs', 'how to', 'runbook', 'faq'] },
+    { key: 'support', label: 'Help & Support', href: '/help', keywords: ['support', 'helpdesk', 'escalation'] },
+];
 
 const priorities = ['Critical', 'High', 'Medium', 'Low'];
 const statuses = ['Open', 'In Progress', 'Resolved', 'Closed'];
@@ -162,6 +169,10 @@ export default function TicketDetail() {
     const reporterInitials = reporterName !== 'Unknown' ? reporterName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
     const escalationAdvice = ticket.escalationAdvice || { shouldEscalate: false, level: 'Standard', reason: 'No escalation signal detected.' };
     const playbook = ticket.playbook || [];
+    const toolShortcuts = useMemo(() => {
+        const source = `${ticket.title || ''} ${ticket.description || ''}`.toLowerCase();
+        return toolMap.filter((tool) => tool.keywords.some((keyword) => source.includes(keyword)));
+    }, [ticket.title, ticket.description]);
 
     const rootCauseTimeline = [
         { type: 'created', label: 'Ticket Created', by: reporterName, at: ticket.createdAt },
@@ -499,6 +510,24 @@ export default function TicketDetail() {
                                 </label>
                                 <p className="text-sm text-gray-900 dark:text-white">{formatDate(ticket.createdAt)}</p>
                             </div>
+                        </div>
+                    </Card>
+
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Tool Shortcuts</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Open the tools most likely needed for this ticket.</p>
+                        <div className="space-y-2">
+                            {(toolShortcuts.length > 0 ? toolShortcuts : toolMap).map((tool) => (
+                                tool.href.startsWith('http') ? (
+                                    <a key={tool.key} href={tool.href} target="_blank" rel="noreferrer" className="block rounded-lg border bg-white dark:bg-dark-bg px-3 py-2 text-sm font-medium text-gray-900 dark:text-white hover:border-primary-300">
+                                        {tool.label}
+                                    </a>
+                                ) : (
+                                    <Link key={tool.key} to={tool.href} className="block rounded-lg border bg-white dark:bg-dark-bg px-3 py-2 text-sm font-medium text-gray-900 dark:text-white hover:border-primary-300">
+                                        {tool.label}
+                                    </Link>
+                                )
+                            ))}
                         </div>
                     </Card>
 

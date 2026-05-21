@@ -8,18 +8,31 @@ export default function CalendarSchedule() {
   const [mode, setMode] = useState('Month');
   const [filter, setFilter] = useState('All');
   const [selectedDay, setSelectedDay] = useState(new Date().toISOString().slice(0, 10));
+  const [eventType, setEventType] = useState('Meeting');
+  const [eventNote, setEventNote] = useState('');
+  const [extraEvents, setExtraEvents] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('calendar-events') || '[]'); } catch { return []; }
+  });
 
   const { data: ticketsData } = useQuery({ queryKey: ['calendar-source'], queryFn: () => ticketsAPI.getAll({ limit: 1000 }).then((r) => r.data.data.tickets || []) });
 
   const events = useMemo(() => {
     const t = ticketsData || [];
-    return t.flatMap((x) => {
+    const base = t.flatMap((x) => {
       const list = [];
       if (x.slaDeadline) list.push({ id: `${x._id}-deadline`, date: new Date(x.slaDeadline).toISOString().slice(0, 10), type: 'Deadline', color: 'red', title: `Deadline: ${x.title}`, ticketId: x._id });
       list.push({ id: `${x._id}-followup`, date: new Date(x.createdAt).toISOString().slice(0, 10), type: 'Follow-up', color: 'blue', title: `Follow-up: ${x.title}`, ticketId: x._id });
       return list;
     });
-  }, [ticketsData]);
+    return [...base, ...extraEvents];
+  }, [ticketsData, extraEvents]);
+
+  const addEvent = () => {
+    const next = [...extraEvents, { id: Date.now(), date: selectedDay, type: eventType, color: 'green', title: eventNote || `${eventType} on ${selectedDay}`, ticketId: null }];
+    setExtraEvents(next);
+    localStorage.setItem('calendar-events', JSON.stringify(next));
+    setEventNote('');
+  };
 
   const dayEvents = events.filter((e) => e.date === selectedDay && (filter === 'All' || e.type === filter));
 
@@ -39,6 +52,11 @@ export default function CalendarSchedule() {
             {['All', 'Deadline', 'Follow-up'].map((f) => <option key={f}>{f}</option>)}
           </select>
           <button className="px-3 py-2 rounded-lg bg-gray-100 text-sm" onClick={() => setSelectedDay(new Date().toISOString().slice(0, 10))}>Today</button>
+          <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="px-3 py-2 border rounded-lg bg-white dark:bg-dark-bg">
+            {['Meeting', 'Follow-up', 'Call', 'Review', 'On-site visit'].map((x) => <option key={x}>{x}</option>)}
+          </select>
+          <input value={eventNote} onChange={(e) => setEventNote(e.target.value)} placeholder="Meeting notes or title" className="px-3 py-2 border rounded-lg bg-white dark:bg-dark-bg min-w-[240px]" />
+          <button className="px-3 py-2 rounded-lg bg-primary-600 text-white text-sm" onClick={addEvent}>Schedule</button>
           <button className="px-3 py-2 rounded-lg bg-green-100 text-green-700 text-sm">Sync Google Calendar</button>
         </div>
 
@@ -54,6 +72,9 @@ export default function CalendarSchedule() {
               ))}
             </div>
           )}
+        </div>
+        <div className="rounded-lg border bg-white dark:bg-dark-bg p-3 text-sm text-gray-600 dark:text-gray-300">
+          Use the scheduler to create meetings, follow-ups, review blocks, or on-site visits directly from the calendar.
         </div>
       </Card>
     </div>

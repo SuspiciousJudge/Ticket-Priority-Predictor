@@ -7,7 +7,7 @@ import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import { useStore } from '../store/useStore';
-import { ticketsAPI } from '../services/api';
+import { ticketsAPI, usersAPI } from '../services/api';
 import { formatRelativeTime, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -29,7 +29,13 @@ export default function TicketList() {
     const [selectedStatus, setSelectedStatus] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedTickets, setSelectedTickets] = useState([]);
+    const [bulkAssignee, setBulkAssignee] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+
+    const { data: usersData } = useQuery({
+        queryKey: ['ticket-list-users'],
+        queryFn: () => usersAPI.getAll().then((r) => r.data.data || []),
+    });
 
     // Debounce search query
     useEffect(() => {
@@ -109,6 +115,21 @@ export default function TicketList() {
             toast.success('Tickets deleted successfully', { id: toastId });
         } catch {
             toast.error('Failed to delete some tickets', { id: toastId });
+        }
+    };
+
+    const handleBulkAssign = async () => {
+        if (!bulkAssignee || selectedTickets.length === 0) return;
+        const toastId = toast.loading(`Assigning ${selectedTickets.length} ticket(s)...`);
+        try {
+            await Promise.all(selectedTickets.map((id) => ticketsAPI.update(id, { assignee: bulkAssignee })));
+            await queryClient.invalidateQueries({ queryKey: ['tickets'] });
+            await queryClient.invalidateQueries({ queryKey: ['stats'] });
+            setSelectedTickets([]);
+            setBulkAssignee('');
+            toast.success('Tickets assigned successfully', { id: toastId });
+        } catch {
+            toast.error('Failed to assign some tickets', { id: toastId });
         }
     };
 
@@ -234,6 +255,11 @@ export default function TicketList() {
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-primary-700 dark:text-primary-300">{selectedTickets.length} ticket(s) selected</span>
                                 <div className="flex items-center space-x-2">
+                                    <select value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)} className="px-3 py-2 rounded-lg border border-primary-200 dark:border-primary-800 bg-white dark:bg-dark-bg text-sm">
+                                        <option value="">Assign selected to...</option>
+                                        {(usersData || []).map((u) => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
+                                    </select>
+                                    <Button variant="outline" size="sm" onClick={handleBulkAssign} disabled={!bulkAssignee}>Assign</Button>
                                     <Button variant="outline" size="sm" icon={RefreshCw} onClick={() => toast.success('Status updated')}>Change Status</Button>
                                     <Button variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>Delete</Button>
                                     <button onClick={() => setSelectedTickets([])} className="p-1.5 hover:bg-primary-100 rounded transition-colors">
@@ -304,7 +330,7 @@ export default function TicketList() {
                                 const tId = ticket._id || ticket.ticketId || ticket.id;
                                 return (
                                 <motion.div key={tId} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.04 }}>
-                                    <Card clickable onClick={() => navigate(`/tickets/${tId}`)} className="p-5 h-full flex flex-col relative group">
+                                    <Card clickable onClick={() => navigate(`/tickets/${tId}`)} className={cn('p-5 h-full flex flex-col relative group', selectedTickets.includes(tId) && 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900/30')}>
                                         <button onClick={(e) => { e.stopPropagation(); toggleTicketSelection(tId); }}
                                             className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                             {selectedTickets.includes(tId) ? <CheckSquare className="w-5 h-5 text-primary-600" /> : <Square className="w-5 h-5 text-gray-400" />}
@@ -313,7 +339,9 @@ export default function TicketList() {
                                             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">#{tId?.substring(0, 8)}</span>
                                             <Badge type="priority" value={ticket.priority}>{ticket.priority}</Badge>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">{ticket.title}</h3>
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); toggleTicketSelection(tId); }} className="text-left mb-2">
+                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">{ticket.title}</h3>
+                                        </button>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 flex-1">{ticket.description}</p>
                                         <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-dark-border">
                                             <div className="flex items-center space-x-2">
@@ -362,7 +390,7 @@ export default function TicketList() {
                                     {tickets.map((ticket) => {
                                         const tId = ticket._id || ticket.ticketId || ticket.id;
                                         return (
-                                        <tr key={tId} className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-border/50 transition-colors cursor-pointer"
+                                        <tr key={tId} className={cn('border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-border/50 transition-colors cursor-pointer', selectedTickets.includes(tId) && 'bg-primary-50/60 dark:bg-primary-900/10')}
                                             onClick={() => navigate(`/tickets/${tId}`)}>
                                             <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                                                 <button onClick={() => toggleTicketSelection(tId)}>

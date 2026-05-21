@@ -78,11 +78,14 @@ export default function TrendingCarousel() {
                 navigation
                 className="trending-swiper !pb-10"
             >
-                {trendingTickets.map((ticket) => (
-                    <SwiperSlide key={ticket._id || ticket.ticketId}>
+                {trendingTickets.map((ticket) => {
+                    const ticketKey = ticket._id || ticket.id || ticket.ticketId;
+                    if (!ticketKey) return null;
+                    return (
+                    <SwiperSlide key={ticketKey}>
                         <div
-                            onClick={() => navigate(`/tickets/${ticket._id}`)}
-                            className="relative bg-gradient-to-br from-gray-50 to-white dark:from-dark-border/50 dark:to-dark-surface border border-gray-200 dark:border-dark-border rounded-xl p-5 cursor-pointer hover:shadow-medium transition-all duration-300 hover:-translate-y-1 group"
+                            onClick={() => navigate(`/tickets/${ticketKey}`)}
+                            className="relative mx-2 bg-gradient-to-br from-gray-50 to-white dark:from-dark-border/50 dark:to-dark-surface border border-gray-200 dark:border-dark-border rounded-xl p-5 cursor-pointer hover:shadow-medium transition-all duration-300 hover:-translate-y-1 group"
                         >
                             <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl" style={{
                                 background: ticket.priority === 'Critical' ? '#dc2626' : '#ea580c'
@@ -113,7 +116,7 @@ export default function TrendingCarousel() {
                             </div>
                         </div>
                     </SwiperSlide>
-                ))}
+                )})}
             </Swiper>
         </Card>
     );

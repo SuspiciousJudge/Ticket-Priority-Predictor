@@ -33,8 +33,8 @@ export default function Customers() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div><h1 className="text-3xl font-bold text-gray-900 dark:text-white">Customers / Contacts</h1><p className="text-gray-600 dark:text-gray-400">Customer database and profile references.</p></div>
-        <button className="px-3 py-2 rounded-lg bg-primary-600 text-white text-sm">Add Customer</button>
+        <div><h1 className="text-3xl font-bold text-gray-900 dark:text-white">Teammates / Team</h1><p className="text-gray-600 dark:text-gray-400">People directory, internal contacts, and work context.</p></div>
+        <button className="px-3 py-2 rounded-lg bg-primary-600 text-white text-sm">Add Teammate</button>
       </div>
 
       <Card className="p-4">
@@ -47,7 +47,7 @@ export default function Customers() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b"><th className="text-left py-2">Name</th><th className="text-left py-2">Email</th><th className="text-left py-2">Company</th><th className="text-left py-2">Tier</th><th className="text-left py-2">Total Tickets</th><th className="text-left py-2">Last Contact</th><th className="text-left py-2">Status</th></tr></thead>
+            <thead><tr className="border-b"><th className="text-left py-2">Name</th><th className="text-left py-2">Email</th><th className="text-left py-2">Company</th><th className="text-left py-2">Tier</th><th className="text-left py-2">Tickets</th><th className="text-left py-2">Last Contact</th><th className="text-left py-2">Status</th></tr></thead>
             <tbody>
               {filtered.map((r) => (
                 <tr key={r._id} className="border-b">

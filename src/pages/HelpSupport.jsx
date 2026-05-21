@@ -14,8 +14,19 @@ export default function HelpSupport() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Help & Support</h1>
-        <p className="text-gray-600 dark:text-gray-400">Find support resources, guides, and frequently asked questions.</p>
+        <p className="text-gray-600 dark:text-gray-400">Step-by-step onboarding, support contacts, and escalation paths for new joiners.</p>
       </div>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-3">Joiner Checklist</h3>
+        <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <li>Sign in, confirm your team, and open the dashboard.</li>
+          <li>Review Knowledge Base articles for workflow, priority, and SLA basics.</li>
+          <li>Set up your inbox, notifications, and calendar preferences.</li>
+          <li>Use Create Ticket or Saved Views to start working on assigned queues.</li>
+          <li>Escalate blocker tickets through Help & Support or the ticket detail page.</li>
+        </ol>
+      </Card>
 
       <Card className="p-4">
         <h3 className="font-semibold mb-3">Resource Center</h3>
@@ -43,6 +54,11 @@ export default function HelpSupport() {
       <Card className="p-4">
         <h3 className="font-semibold mb-2">Quick Contact</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400">For platform issues, raise a ticket tagged with category "Technical Support" and priority based on impact. Critical outages should be escalated immediately through the Ticket Detail escalation assistant.</p>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div className="rounded-lg border bg-white dark:bg-dark-bg p-3"><p className="font-medium">Helpdesk</p><p className="text-gray-500">helpdesk@ticketiq.com</p></div>
+          <div className="rounded-lg border bg-white dark:bg-dark-bg p-3"><p className="font-medium">Support</p><p className="text-gray-500">support@ticketiq.com</p></div>
+          <div className="rounded-lg border bg-white dark:bg-dark-bg p-3"><p className="font-medium">Administrator</p><p className="text-gray-500">admin@ticketiq.com</p></div>
+        </div>
       </Card>
     </div>
   );

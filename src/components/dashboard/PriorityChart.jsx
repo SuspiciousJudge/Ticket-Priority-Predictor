@@ -43,27 +43,30 @@ export default function PriorityChart() {
         return null;
     };
 
-    const CustomLegend = ({ payload }) => {
+    const CustomLegend = ({ payload = [] }) => {
+        if (!Array.isArray(payload) || payload.length === 0) return null;
         const total = data.reduce((sum, item) => sum + item.value, 0);
 
         return (
             <div className="grid grid-cols-2 gap-3 mt-4">
-                {payload.map((entry, index) => (
+                {payload.map((entry, index) => {
+                    const itemValue = Number(entry?.payload?.value ?? data[index]?.value ?? 0);
+                    return (
                     <div key={index} className="flex items-center space-x-2">
                         <div
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: entry.color }}
+                            style={{ backgroundColor: entry?.color || '#6b7280' }}
                         />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                {entry.value}
+                                {entry?.value || 'Unknown'}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {data[index].value} ({total > 0 ? ((data[index].value / total) * 100).toFixed(1) : 0}%)
+                                {itemValue} ({total > 0 ? ((itemValue / total) * 100).toFixed(1) : 0}%)
                             </p>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         );
     };

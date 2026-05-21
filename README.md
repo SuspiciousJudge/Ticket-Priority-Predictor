@@ -258,6 +258,9 @@ Detailed docs:
 ## Recent Important Updates
 
 - Added ONNX runtime integration and model health endpoint.
+- Expanded the support console UI with faster ticket navigation from Saved Views, clearer ticket selection controls, direct per-user assignment in Unassigned, richer reports templates, deeper activity details, and a team chat side panel.
+- Updated the calendar, SLA, help/support, teammates, and ticket detail screens to expose scheduling, policy, onboarding, and tool-shortcut workflows directly in the UI.
+- Improved dark-mode readability across the floating chat surface and several dashboard-facing cards and panels.
 - Added frontend settings card to monitor model health.
 - Added model validation scripts.
 - Removed deprecated MongoDB connection options.

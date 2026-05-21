@@ -83,11 +83,14 @@ export default function RecentTicketsTable() {
                         </tr>
                     </thead>
                     <tbody>
-                        {recentTickets.map((ticket) => (
+                        {recentTickets.map((ticket) => {
+                            const ticketKey = ticket._id || ticket.id || ticket.ticketId;
+                            if (!ticketKey) return null;
+                            return (
                             <tr
-                                key={ticket._id || ticket.ticketId}
+                                key={ticketKey}
                                 className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-border/50 transition-colors cursor-pointer"
-                                onClick={() => navigate(`/tickets/${ticket._id}`)}
+                                onClick={() => navigate(`/tickets/${ticketKey}`)}
                             >
                                 <td className="py-3 px-4">
                                     <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -113,7 +116,7 @@ export default function RecentTicketsTable() {
                                     {ticket.assignee ? (
                                         <div className="flex items-center space-x-2">
                                             <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                                {ticket.assignee.name?.substring(0, 2).toUpperCase()}
+                                                {(ticket.assignee.name || 'U').substring(0, 2).toUpperCase()}
                                             </div>
                                             <span className="text-sm text-gray-900 dark:text-white">
                                                 {ticket.assignee.name}
@@ -134,7 +137,7 @@ export default function RecentTicketsTable() {
                                             className="p-1.5 hover:bg-gray-100 dark:hover:bg-dark-border rounded transition-colors"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                navigate(`/tickets/${ticket._id}`);
+                                                navigate(`/tickets/${ticketKey}`);
                                             }}
                                         >
                                             <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -142,7 +145,7 @@ export default function RecentTicketsTable() {
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </table>
                 {recentTickets.length === 0 && (

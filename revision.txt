@@ -12,6 +12,13 @@ This document is a complete technical revision of the project with:
 - Security, deployment, and operations notes.
 
 
+Recent UI rollout notes
+-----------------------
+- The support console now includes a dark-mode-safe floating Team Chat panel with channel tabs, team/individual targeting, attachments, reactions, and read receipts.
+- Ticket browsing now emphasizes clear selection affordances, direct assignment controls, and SPA-safe navigation from Saved Views and activity surfaces.
+- Reports, calendar, SLA, help/support, and teammates pages were expanded with concrete workflows and standard formats instead of placeholder text.
+
+
 1) System Purpose and Business Flow
 -----------------------------------
 This project is an IT support/ticketing platform where users can:

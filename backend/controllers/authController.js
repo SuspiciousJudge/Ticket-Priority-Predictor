@@ -14,12 +14,17 @@ const generateToken = (user) => {
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
+    const rawName = req.body?.name;
+    const rawEmail = req.body?.email;
+    const rawPassword = req.body?.password;
+    const name = String(rawName || '').trim();
+    const email = String(rawEmail || '').trim().toLowerCase();
+    const password = String(rawPassword || '');
+    if (!name || !email || !password.trim()) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     }
 
-    const exists = await User.findOne({ email: email.toLowerCase() });
+    const exists = await User.findOne({ email });
     if (exists) {
       return res.status(400).json({
         success: false,
@@ -30,7 +35,7 @@ exports.register = async (req, res, next) => {
 
     const salt = await bcrypt.genSalt(SALT_ROUNDS);
     const hashed = await bcrypt.hash(password, salt);
-    const user = await User.create({ name: name.trim(), email: email.toLowerCase(), password: hashed, role: 'agent' });
+    const user = await User.create({ name, email, password: hashed, role: 'agent' });
     const token = generateToken(user);
 
     res.json({
@@ -65,12 +70,15 @@ exports.register = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const rawEmail = req.body?.email;
+    const rawPassword = req.body?.password;
+    const email = String(rawEmail || '').trim().toLowerCase();
+    const password = String(rawPassword || '');
+    if (!email || !password.trim()) {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ success: false, message: 'Invalid email or password' });

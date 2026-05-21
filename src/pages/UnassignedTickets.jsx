@@ -3,12 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketsAPI, usersAPI } from '../services/api';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
+import Button from '../components/common/Button';
 
 export default function UnassignedTickets() {
   const queryClient = useQueryClient();
   const [sortBy, setSortBy] = useState('priority');
   const [selectedUser, setSelectedUser] = useState('');
   const [bulkIds, setBulkIds] = useState([]);
+  const [rowAssignees, setRowAssignees] = useState({});
 
   const { data: ticketsData, isLoading } = useQuery({
     queryKey: ['unassigned-source'],
@@ -50,6 +52,12 @@ export default function UnassignedTickets() {
     Promise.all(bulkIds.map((id) => assignMutation.mutateAsync({ id, assignee: selectedUser }))).then(() => setBulkIds([]));
   };
 
+  const assignOne = (id) => {
+    const assignee = rowAssignees[id];
+    if (!assignee) return;
+    assignMutation.mutate({ id, assignee });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -70,7 +78,7 @@ export default function UnassignedTickets() {
             <option value="">Select assignee for bulk action</option>
             {(usersData || []).map((u) => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
           </select>
-          <button onClick={bulkAssign} className="px-3 py-2 rounded-lg bg-primary-600 text-white text-sm">Bulk Assign ({bulkIds.length})</button>
+          <Button onClick={bulkAssign} disabled={!selectedUser || bulkIds.length === 0}>Bulk Assign ({bulkIds.length})</Button>
         </div>
 
         {isLoading ? (
@@ -88,8 +96,13 @@ export default function UnassignedTickets() {
                     <p className="text-xs text-gray-500">{t.ticketId} · {t.category || 'Support'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   <Badge type="priority" value={t.priority}>{t.priority}</Badge>
+                  <select value={rowAssignees[t._id] || ''} onChange={(e) => setRowAssignees((prev) => ({ ...prev, [t._id]: e.target.value }))} className="px-3 py-2 border rounded-lg bg-white dark:bg-dark-bg text-sm min-w-[220px]">
+                    <option value="">Assign this ticket to...</option>
+                    {(usersData || []).map((u) => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
+                  </select>
+                  <Button size="sm" onClick={() => assignOne(t._id)} disabled={!rowAssignees[t._id]}>Assign</Button>
                   <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700">Needs Attention</span>
                 </div>
               </div>
