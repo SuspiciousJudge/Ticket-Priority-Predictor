@@ -1,5 +1,3 @@
-const crypto = require('crypto');
-
 // Counter-based ticket ID to avoid collisions
 let ticketCounter = 0;
 

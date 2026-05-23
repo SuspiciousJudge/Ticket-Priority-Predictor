@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, X, Send, Users, CircleDot, Image as ImageIcon, AtSign, Paperclip, CheckCheck, User } from 'lucide-react';
+import { X, Send, Users, CircleDot, Image as ImageIcon, AtSign, Paperclip, CheckCheck, User } from 'lucide-react';
 import { usersAPI } from '../../services/api';
 import { cn } from '../../lib/utils';
+import { useStore } from '../../store/useStore';
 
 const seedMessages = [
   { id: 1, user: 'Priya', role: 'Lead', text: 'Please pick up the login outage ticket and confirm the root cause.', at: '2 min ago', side: 'left', channel: 'incident-room', reactions: [{ emoji: '👍', count: 2 }] },
@@ -18,7 +19,7 @@ const channels = [
 ];
 
 export default function TeamChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { teamChatOpen, setTeamChatOpen } = useStore();
   const [messages, setMessages] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('team-chat-messages') || 'null') || seedMessages;
@@ -46,25 +47,27 @@ export default function TeamChatWidget() {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') setTeamChatOpen(false);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [setTeamChatOpen]);
 
   useEffect(() => {
-    return () => {
-      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
-    };
+    return undefined;
   }, [attachmentPreview]);
 
   const handleAttachmentChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
     setAttachment(file);
-    setAttachmentPreview(URL.createObjectURL(file));
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachmentPreview(String(reader.result || ''));
+    };
+    reader.readAsDataURL(file);
   };
 
   const send = () => {
@@ -92,7 +95,6 @@ export default function TeamChatWidget() {
     setInput('');
     setRecipientId('');
     setAttachment(null);
-    if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
     setAttachmentPreview('');
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -106,27 +108,14 @@ export default function TeamChatWidget() {
 
   return (
     <>
-      <motion.button
-        onClick={() => setIsOpen((v) => !v)}
-        className={cn(
-          'fixed bottom-6 left-[296px] z-50 flex h-14 w-14 items-center justify-center rounded-full border transition-colors',
-          'border-gray-200 bg-white text-[#534AB7] dark:border-dark-border dark:bg-dark-surface dark:text-[#A9A4F0]'
-        )}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        aria-label="Toggle team chat"
-      >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageSquare className="h-6 w-6" />}
-      </motion.button>
-
       <AnimatePresence>
-        {isOpen && (
+        {teamChatOpen && (
           <motion.aside
-            initial={{ opacity: 0, x: -20, scale: 0.98 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -20, scale: 0.98 }}
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed bottom-24 left-[296px] z-50 flex h-[560px] w-[360px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-dark-border dark:bg-dark-surface"
+            className="fixed bottom-6 right-4 z-50 flex h-[560px] max-h-[calc(100vh-3rem)] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-dark-border dark:bg-dark-surface md:right-6 md:w-[380px]"
           >
             <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-dark-border dark:bg-dark-surface">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-[#534AB7] dark:bg-dark-bg dark:text-[#A9A4F0]">
@@ -134,7 +123,7 @@ export default function TeamChatWidget() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Team Chat</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Chat</h3>
                   <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:bg-green-900/25 dark:text-green-300">
                     <span className="h-2 w-2 rounded-full bg-green-500" />
                     {onlineCount} online
@@ -142,7 +131,7 @@ export default function TeamChatWidget() {
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Side-by-side with the workspace</p>
               </div>
-              <button onClick={() => setIsOpen(false)} className="rounded-lg p-1.5 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-bg" aria-label="Close chat">
+              <button onClick={() => setTeamChatOpen(false)} className="rounded-lg p-1.5 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-bg" aria-label="Close chat">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -232,7 +221,7 @@ export default function TeamChatWidget() {
                       </div>
                     )}
 
-                    <div className={cn('max-w-[76%] space-y-1', isOwn ? 'items-end text-right' : 'items-start text-left')}>
+                    <div className={cn('flex max-w-[76%] flex-col gap-1', isOwn ? 'items-end text-right' : 'items-start text-left')}>
                       <div className={cn('flex items-center gap-2 text-xs', isOwn ? 'justify-end' : 'justify-start')}>
                         <span className="font-semibold text-gray-900 dark:text-white">{message.user}</span>
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:border-dark-border dark:bg-dark-surface dark:text-gray-300">
@@ -254,6 +243,11 @@ export default function TeamChatWidget() {
                         {message.attachmentPreview && (
                           <div className="mt-3 overflow-hidden rounded-xl border border-white/20 bg-white/10">
                             <img src={message.attachmentPreview} alt={message.attachmentName || 'Attachment'} className="h-36 w-full object-cover" />
+                            {message.attachmentName && (
+                              <div className="border-t border-white/10 px-3 py-2 text-left text-[11px] font-medium text-white/80">
+                                {message.attachmentName}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

@@ -51,7 +51,7 @@ run().catch(async (err) => {
   console.error('Assign tickets failed:', err.message);
   try {
     await mongoose.disconnect();
-  } catch (e) {
+  } catch {
     // ignore
   }
   process.exit(1);

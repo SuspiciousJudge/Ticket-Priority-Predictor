@@ -9,6 +9,9 @@ export const useStore = create(
             toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
             sidebarCollapsed: false,
             toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+            teamChatOpen: false,
+            setTeamChatOpen: (open) => set({ teamChatOpen: Boolean(open) }),
+            toggleTeamChat: () => set((state) => ({ teamChatOpen: !state.teamChatOpen })),
 
             // Selected Team State
             currentTeam: null,

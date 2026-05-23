@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Bell, Menu, Moon, Sun, User, Settings, HelpCircle, LogOut, X, Check, CheckCheck, Inbox, AlertTriangle, MessageCircle, Shield, ChevronDown } from 'lucide-react';
+import { Search, Bell, Menu, Moon, Sun, User, Settings, HelpCircle, LogOut, X, Check, CheckCheck, Inbox, AlertTriangle, MessageCircle, Shield, ChevronDown, MessageSquare } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatRelativeTime } from '../../lib/utils';
@@ -213,7 +213,7 @@ function ProfileDropdown({ isOpen, onClose, user, onLogout }) {
 export default function Topbar() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { toggleSidebar, darkMode, toggleDarkMode } = useStore();
+    const { toggleSidebar, darkMode, toggleDarkMode, teamChatOpen, toggleTeamChat } = useStore();
     
     // Fetch user mapping correctly matching ProtectedRoute format
     const { data: user } = useQuery({
@@ -292,6 +292,20 @@ export default function Topbar() {
                 </div>
 
                 <div className="flex items-center space-x-3">
+                    <button
+                        onClick={toggleTeamChat}
+                        className={cn(
+                            'hidden md:inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                            teamChatOpen
+                                ? 'border-[#534AB7] bg-[#534AB7] text-white shadow-sm'
+                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-dark-border dark:bg-dark-surface dark:text-gray-200 dark:hover:bg-dark-bg'
+                        )}
+                        aria-label="Toggle chat"
+                    >
+                        <MessageSquare className="h-4 w-4" />
+                        <span>Chat</span>
+                    </button>
+
                     <div className="hidden md:block text-right">
                         <div className="text-sm font-medium text-gray-900 dark:text-white">{formatTime(currentTime)}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{formatDate(currentTime)}</div>

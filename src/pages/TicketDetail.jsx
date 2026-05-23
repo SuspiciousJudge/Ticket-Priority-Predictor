@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,11 +56,6 @@ export default function TicketDetail() {
 
     const ticket = ticketRes;
 
-    useEffect(() => {
-        setEditing(false);
-        setCommentText('');
-    }, [id]);
-
     // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: () => ticketsAPI.delete(id),
@@ -108,6 +103,13 @@ export default function TicketDetail() {
         },
         onError: () => toast.error('Failed to generate draft reply'),
     });
+
+    const toolShortcuts = ticket
+        ? toolMap.filter((tool) => {
+            const source = `${ticket.title || ''} ${ticket.description || ''}`.toLowerCase();
+            return tool.keywords.some((keyword) => source.includes(keyword));
+        })
+        : [];
 
     const handleStartEdit = () => {
         setEditForm({ priority: ticket.priority, status: ticket.status, priorityChangeReason: '' });
@@ -169,10 +171,6 @@ export default function TicketDetail() {
     const reporterInitials = reporterName !== 'Unknown' ? reporterName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
     const escalationAdvice = ticket.escalationAdvice || { shouldEscalate: false, level: 'Standard', reason: 'No escalation signal detected.' };
     const playbook = ticket.playbook || [];
-    const toolShortcuts = useMemo(() => {
-        const source = `${ticket.title || ''} ${ticket.description || ''}`.toLowerCase();
-        return toolMap.filter((tool) => tool.keywords.some((keyword) => source.includes(keyword)));
-    }, [ticket.title, ticket.description]);
 
     const rootCauseTimeline = [
         { type: 'created', label: 'Ticket Created', by: reporterName, at: ticket.createdAt },

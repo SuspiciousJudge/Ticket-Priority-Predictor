@@ -5,6 +5,45 @@ import { useStore } from '../../store/useStore';
 import { ticketsAPI } from '../../services/api';
 import LoadingSkeleton from '../common/LoadingSkeleton';
 
+function CustomTooltip({ active, payload, data }) {
+    if (active && payload && payload.length) {
+        const totalValues = data.reduce((sum, item) => sum + item.value, 0);
+        return (
+            <div className="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg p-3 shadow-lg">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{payload[0].name}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {payload[0].value} tickets ({totalValues > 0 ? ((payload[0].value / totalValues) * 100).toFixed(1) : 0}%)
+                </p>
+            </div>
+        );
+    }
+    return null;
+}
+
+function CustomLegend({ payload = [], data = [] }) {
+    if (!Array.isArray(payload) || payload.length === 0) return null;
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+
+    return (
+        <div className="grid grid-cols-2 gap-3 mt-4">
+            {payload.map((entry, index) => {
+                const itemValue = Number(entry?.payload?.value ?? data[index]?.value ?? 0);
+                return (
+                    <div key={index} className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry?.color || '#6b7280' }} />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{entry?.value || 'Unknown'}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {itemValue} ({total > 0 ? ((itemValue / total) * 100).toFixed(1) : 0}%)
+                            </p>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 export default function PriorityChart() {
     const { currentTeam } = useStore();
 
@@ -25,51 +64,6 @@ export default function PriorityChart() {
     if (isLoading) {
         return <Card className="p-6 h-[360px]"><LoadingSkeleton count={3} /></Card>;
     }
-
-    const CustomTooltip = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            const totalValues = data.reduce((sum, item) => sum + item.value, 0);
-            return (
-                <div className="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg p-3 shadow-lg">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {payload[0].name}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {payload[0].value} tickets ({totalValues > 0 ? ((payload[0].value / totalValues) * 100).toFixed(1) : 0}%)
-                    </p>
-                </div>
-            );
-        }
-        return null;
-    };
-
-    const CustomLegend = ({ payload = [] }) => {
-        if (!Array.isArray(payload) || payload.length === 0) return null;
-        const total = data.reduce((sum, item) => sum + item.value, 0);
-
-        return (
-            <div className="grid grid-cols-2 gap-3 mt-4">
-                {payload.map((entry, index) => {
-                    const itemValue = Number(entry?.payload?.value ?? data[index]?.value ?? 0);
-                    return (
-                    <div key={index} className="flex items-center space-x-2">
-                        <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: entry?.color || '#6b7280' }}
-                        />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                {entry?.value || 'Unknown'}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {itemValue} ({total > 0 ? ((itemValue / total) * 100).toFixed(1) : 0}%)
-                            </p>
-                        </div>
-                    </div>
-                )})}
-            </div>
-        );
-    };
 
     return (
         <Card className="p-6">
@@ -95,8 +89,8 @@ export default function PriorityChart() {
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend content={<CustomLegend />} />
+                        <Tooltip content={<CustomTooltip data={data} />} />
+                        <Legend content={<CustomLegend data={data} />} />
                     </PieChart>
                 </ResponsiveContainer>
             ) : (

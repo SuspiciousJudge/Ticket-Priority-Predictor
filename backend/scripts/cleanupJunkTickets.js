@@ -35,7 +35,7 @@ run().catch(async (err) => {
   console.error('Cleanup failed:', err.message);
   try {
     await mongoose.disconnect();
-  } catch (e) {
+  } catch {
     // ignore
   }
   process.exit(1);

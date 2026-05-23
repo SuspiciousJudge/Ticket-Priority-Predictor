@@ -105,7 +105,7 @@ ${statsContext}${ticketContext}`;
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }],
       }))
-      .filter((msg, idx, arr) => {
+      .filter((msg, idx) => {
         if (idx === 0) return msg.role === 'user';
         return true;
       });

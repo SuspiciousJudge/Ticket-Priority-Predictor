@@ -16,7 +16,7 @@ export default function Automations() {
 
   const addRule = () => {
     if (!form.name.trim()) return;
-    const next = [{ id: Date.now(), ...form, success: 0, lastRun: null }, ...rules];
+    const next = [{ id: crypto.randomUUID(), ...form, success: 0, lastRun: null }, ...rules];
     setRules(next);
     localStorage.setItem('automation-rules', JSON.stringify(next));
     setForm({ name: '', trigger: 'Ticket created', condition: 'Priority is Critical', action: 'Assign to specific team', active: true });
@@ -34,7 +34,7 @@ export default function Automations() {
     localStorage.setItem('automation-rules', JSON.stringify(next));
   };
 
-  const logs = useMemo(() => rules.slice(0, 10).map((r) => ({ id: r.id, text: `Rule \"${r.name}\" ${r.active ? 'is active' : 'is paused'}`, at: r.lastRun || new Date().toISOString() })), [rules]);
+  const logs = useMemo(() => rules.slice(0, 10).map((r) => ({ id: r.id, text: `Rule "${r.name}" ${r.active ? 'is active' : 'is paused'}`, at: r.lastRun || new Date().toISOString() })), [rules]);
 
   return (
     <div className="space-y-6">

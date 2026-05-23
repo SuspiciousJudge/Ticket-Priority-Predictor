@@ -14,7 +14,7 @@ export default function TemplatesPage() {
 
   const save = () => {
     if (!form.name || !form.content) return;
-    const next = [{ id: Date.now(), type: tab, ...form, usage: 0, updatedAt: new Date().toISOString() }, ...items];
+    const next = [{ id: crypto.randomUUID(), type: tab, ...form, usage: 0, updatedAt: new Date().toISOString() }, ...items];
     setItems(next);
     localStorage.setItem('templates-store', JSON.stringify(next));
     setForm({ name: '', content: '', category: 'General' });
@@ -27,7 +27,7 @@ export default function TemplatesPage() {
   };
 
   const duplicate = (item) => {
-    const next = [{ ...item, id: Date.now(), name: `${item.name} (Copy)` }, ...items];
+    const next = [{ ...item, id: crypto.randomUUID(), name: `${item.name} (Copy)` }, ...items];
     setItems(next);
     localStorage.setItem('templates-store', JSON.stringify(next));
   };

@@ -3,7 +3,7 @@ const fs = require('fs');
 let ort;
 try {
   ort = require('onnxruntime-node');
-} catch (e) {
+} catch {
   // Graceful fallback if onnxruntime-node is not installed
 }
 
@@ -67,7 +67,7 @@ const KEYWORD_RULES = [
   { priority: 'Critical', weight: 38, pattern: /\b(payment failed|duplicate charge|billing failure|cannot process payment)\b/i },
 
   // High severity
-  { priority: 'High', weight: 22, pattern: /\b(fail|fails|failed|failure|unable to|cannot|can\'t|won\'t)\b/i },
+  { priority: 'High', weight: 22, pattern: /\b(fail|fails|failed|failure|unable to|cannot|can't|won't)\b/i },
   { priority: 'High', weight: 18, pattern: /\b(timeout|timed out|latency|very slow|degraded|stuck|hangs|freezes)\b/i },
   { priority: 'High', weight: 18, pattern: /\b(login issue|login failed|mfa|sso|auth|authentication|permission denied|access denied)\b/i },
   { priority: 'High', weight: 16, pattern: /\b(api error|500|502|503|rate limit|webhook fail|sync fail)\b/i },

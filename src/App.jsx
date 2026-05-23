@@ -32,6 +32,7 @@ import Landing from './pages/Landing';
 import Toast from './components/common/Toast';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { getStoredToken } from './services/api';
+import { useParams } from 'react-router-dom';
 
 function AuthPageRedirect({ children }) {
   const token = getStoredToken();
@@ -45,6 +46,11 @@ function ProtectedPage({ children }) {
       <Layout>{children}</Layout>
     </ProtectedRoute>
   );
+}
+
+function TicketDetailRoute() {
+  const { id } = useParams();
+  return <TicketDetail key={id} />;
 }
 
 function App() {
@@ -64,7 +70,7 @@ function App() {
         <Route path="/inbox" element={<ProtectedPage><InboxPage /></ProtectedPage>} />
         <Route path="/inbox-email" element={<Navigate to="/inbox" replace />} />
         <Route path="/tickets" element={<ProtectedPage><TicketList /></ProtectedPage>} />
-        <Route path="/tickets/:id" element={<ProtectedPage><TicketDetail /></ProtectedPage>} />
+        <Route path="/tickets/:id" element={<ProtectedPage><TicketDetailRoute /></ProtectedPage>} />
         <Route path="/create" element={<ProtectedPage><CreateTicket /></ProtectedPage>} />
         <Route path="/create-ticket" element={<Navigate to="/create" replace />} />
         <Route path="/my-tickets" element={<ProtectedPage><MyTickets /></ProtectedPage>} />

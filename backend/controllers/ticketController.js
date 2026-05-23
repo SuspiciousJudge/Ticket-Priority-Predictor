@@ -83,13 +83,6 @@ function getSlaDeadline(priority, createdAt = new Date()) {
   return date;
 }
 
-function getPriorityWeight(priority) {
-  if (priority === 'Critical') return 4;
-  if (priority === 'High') return 3;
-  if (priority === 'Medium') return 2;
-  return 1;
-}
-
 function calculateImpactScore({ customerTier, priority, affectedUsers = 1, title = '', description = '' }) {
   const tierScoreMap = {
     Enterprise: 30,

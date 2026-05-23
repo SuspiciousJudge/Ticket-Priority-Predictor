@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ export default function useTeamFilter() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const teams = teamsRes?.data?.data || [];
+    const teams = useMemo(() => teamsRes?.data?.data || [], [teamsRes]);
     const isInitSync = useRef(false);
 
     // On mount: read ?team= from URL and sync to store (once)
@@ -29,7 +29,7 @@ export default function useTeamFilter() {
                 setCurrentTeam({ id: matchedTeam._id || matchedTeam.id, name: matchedTeam.name, color: matchedTeam.color });
             }
         }
-    }, [teams]);
+    }, [teams, currentTeam?.id, searchParams, setCurrentTeam]);
 
     // When currentTeam changes in the store, update the URL
     useEffect(() => {
@@ -49,5 +49,5 @@ export default function useTeamFilter() {
                 return next;
             }, { replace: true });
         }
-    }, [currentTeam?.id]);
+    }, [currentTeam?.id, searchParams, setSearchParams]);
 }
