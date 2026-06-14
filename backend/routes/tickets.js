@@ -7,6 +7,7 @@ const { heavyExportLimiter } = require('../middleware/rateLimiters');
 
 router.get('/stats', auth, ticketController.stats);
 router.get('/export-csv', auth, authorize('admin', 'manager'), heavyExportLimiter, ticketController.exportCsv);
+router.get('/export-json', auth, authorize('admin', 'manager'), heavyExportLimiter, ticketController.exportJson);
 router.get('/executive-snapshot', auth, authorize('admin', 'manager'), heavyExportLimiter, ticketController.executiveSnapshotPdf);
 router.get('/:id/similar', auth, ticketController.similar);
 router.get('/:id', auth, ticketController.getById);
@@ -16,5 +17,6 @@ router.delete('/:id', auth, ticketController.remove);
 
 router.get('/', auth, ticketController.getAll);
 router.post('/', auth, ticketController.create);
+router.post('/import-json', auth, authorize('admin'), heavyExportLimiter, ticketController.importJson);
 
 module.exports = router;

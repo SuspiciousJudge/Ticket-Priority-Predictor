@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
     "check:model": "node scripts/checkModel.js",
-    "import:data": "node scripts/importData.js"
+    "import:data": "node scripts/importData.js",
+    "test": "jest --runInBand"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -31,6 +32,8 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "jest": "^29.0.0",
+    "supertest": "^6.0.0"
   }
 }

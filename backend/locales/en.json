@@ -1,0 +1,12 @@
+{
+  "ticket": {
+    "title": "Title",
+    "description": "Description",
+    "priority": "Priority",
+    "status": "Status"
+  },
+  "ai": {
+    "assistant": "Assistant",
+    "suggest_priority": "Suggest Priority"
+  }
+}

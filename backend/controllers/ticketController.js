@@ -1,6 +1,8 @@
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
 const { predictPriority } = require('../utils/mlPredict');
+const { sendAlert } = require('../utils/notify');
+const cache = require('../utils/cache');
 const { generateTicketId } = require('../utils/helpers');
 const mongoose = require('mongoose');
 const { Parser } = require('json2csv');
@@ -220,6 +222,9 @@ exports.getById = async (req, res, next) => {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid ticket id' });
     }
+    const cacheKey = `ticket:${req.params.id}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ success: true, data: cached });
 
     const ticket = await Ticket.findOne({ _id: req.params.id, ...buildTicketScope(req.user) })
       .populate('assignee', 'name email avatar role')
@@ -241,6 +246,7 @@ exports.getById = async (req, res, next) => {
         playbook,
       },
     });
+    cache.set(cacheKey, { ...ticket.toObject(), escalationAdvice, playbook }, 1000 * 60 * 5);
   } catch (err) { next(err); }
 };
 
@@ -338,6 +344,13 @@ exports.create = async (req, res, next) => {
     }
 
     res.json({ success: true, data: ticket });
+
+    // Notify on critical ticket created
+    try {
+      if ((ticket.priority === 'Critical' || ticket.aiPredictions?.priority === 'Critical') && (ticket.aiPredictions?.confidence || ticket.confidence || 0) >= 75) {
+        sendAlert({ title: ticket.title, description: ticket.description, priority: ticket.priority, confidence: ticket.aiPredictions?.confidence || ticket.confidence || 0 });
+      }
+    } catch (e) { /* ignore notification errors */ }
   } catch (err) { next(err); }
 };
 
@@ -719,6 +732,59 @@ exports.stats = async (req, res, next) => {
         agentPerformance,
       },
     });
+  } catch (err) { next(err); }
+};
+
+exports.exportJson = async (req, res, next) => {
+  try {
+    const query = { ...buildTicketScope(req.user) };
+    const tickets = await Ticket.find(query)
+      .sort({ createdAt: -1 })
+      .populate('assignee', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('team', 'name')
+      .lean();
+    return res.json({ success: true, data: tickets });
+  } catch (err) { next(err); }
+};
+
+exports.importJson = async (req, res, next) => {
+  try {
+    const payload = req.body?.tickets;
+    if (!Array.isArray(payload)) return res.status(400).json({ success: false, message: 'tickets array required' });
+
+    const created = [];
+    for (const t of payload) {
+      const title = String(t.title || '').slice(0, 500);
+      if (!title) continue;
+      const description = String(t.description || '').slice(0, 4000);
+      const ai = await predictPriority(title, description, t.customerTier || '');
+      const ticketData = {
+        ticketId: t.ticketId || generateTicketId(),
+        title,
+        description,
+        priority: t.priority || ai.priority,
+        status: t.status || 'Open',
+        category: t.category || null,
+        customerTier: t.customerTier || 'Basic',
+        assignee: t.assignee || null,
+        team: t.team || null,
+        createdBy: req.user ? req.user._id : null,
+        sentiment: ai.sentiment,
+        confidence: ai.confidence,
+        estimatedTime: ai.estimatedTime,
+        tags: ai.tags,
+        attachments: t.attachments || [],
+        affectedUsers: Number(t.affectedUsers) || 1,
+        impactScore: calculateImpactScore({ customerTier: t.customerTier, priority: t.priority || ai.priority, affectedUsers: t.affectedUsers || 1, title, description }),
+        statusHistory: [{ from: 'New', to: t.status || 'Open', changedBy: req.user ? req.user._id : null }],
+        slaDeadline: getSlaDeadline(t.priority || ai.priority),
+        aiPredictions: { predictedPriority: ai.priority, confidence: ai.confidence, reasoning: ai.reasoning },
+      };
+      const createdTicket = await Ticket.create(ticketData);
+      created.push(createdTicket);
+    }
+    return res.json({ success: true, imported: created.length, data: created });
   } catch (err) { next(err); }
 };
 

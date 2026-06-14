@@ -8,14 +8,39 @@ try {
 }
 
 const onnxModelPath = path.join(__dirname, '..', 'models', 'priority_model.onnx');
+const { sendAlert } = require('./notify');
 let session = null;
+// Runtime metrics for monitoring
+const metrics = {
+  predictionsTotal: 0,
+  predictionErrors: 0,
+  totalPredictionTimeMs: 0,
+  avgPredictionTimeMs: 0,
+  lastPredictionAt: null,
+  lastPredictionLatencyMs: 0,
+  modelLoadAttempts: 0,
+  modelLoadSuccess: 0,
+  lastModelLoadAt: null,
+  lastModelLoadError: null,
+  modelFileMtime: null,
+  modelSizeBytes: null,
+};
 
 async function loadModel() {
   if (!ort || !fs.existsSync(onnxModelPath)) return null;
+  metrics.modelLoadAttempts += 1;
+  metrics.lastModelLoadAt = new Date().toISOString();
   if (!session) {
     try {
       session = await ort.InferenceSession.create(onnxModelPath);
+      metrics.modelLoadSuccess += 1;
+      try {
+        const st = fs.statSync(onnxModelPath);
+        metrics.modelFileMtime = st.mtime.toISOString();
+        metrics.modelSizeBytes = st.size;
+      } catch {}
     } catch (e) {
+      metrics.lastModelLoadError = e.message;
       console.warn("Failed to load ONNX model:", e.message);
     }
   }
@@ -195,7 +220,14 @@ async function predictPriority(title, description, customerTier) {
     const inputName = sess.inputNames[0] || 'float_input';
     const feeds = { [inputName]: inputTensor };
     const labelOutputName = sess.outputNames[0];
+    const start = Date.now();
     const results = await sess.run(feeds, [labelOutputName]);
+    const latency = Date.now() - start;
+    metrics.predictionsTotal += 1;
+    metrics.totalPredictionTimeMs += latency;
+    metrics.avgPredictionTimeMs = Math.round(metrics.totalPredictionTimeMs / metrics.predictionsTotal);
+    metrics.lastPredictionAt = new Date().toISOString();
+    metrics.lastPredictionLatencyMs = latency;
     const labelOutput = results[labelOutputName];
     const rawLabel = labelOutput && labelOutput.data ? labelOutput.data[0] : undefined;
     const predictedPriority = normalizePredictedLabel(rawLabel);
@@ -209,7 +241,7 @@ async function predictPriority(title, description, customerTier) {
     // We fetch label output only and use a stable default confidence.
     const wasEscalated = finalPriority !== predictedPriority;
 
-    return {
+    const resultObj = {
       priority: finalPriority,
       confidence: finalConfidence,
       sentiment,
@@ -220,8 +252,19 @@ async function predictPriority(title, description, customerTier) {
         : `Predicted by ONNX Random Forest model (${labelOutputName})`
     };
 
+    // Notify on high-severity detections
+    try {
+      if (resultObj.priority === 'Critical' && (resultObj.confidence || 0) >= 80) {
+        sendAlert({ title, description: description || '', priority: resultObj.priority, confidence: resultObj.confidence });
+      }
+    } catch (e) { /* swallow notification errors */ }
+
+    return resultObj;
+
   } catch (err) {
+    metrics.predictionErrors += 1;
     console.error("ONNX inference failed:", err);
+    try { sendAlert({ title, description: description || '', priority: 'InternalError', confidence: 0, extra: `ONNX error: ${err && err.message}` }); } catch (e) {}
     const fallback = buildFallbackPrediction(text, customerTier, sentiment);
     return {
       ...fallback,
@@ -245,4 +288,57 @@ async function getModelHealth() {
   };
 }
 
-module.exports = { predictPriority, detectSentiment, extractTags, getModelHealth };
+function getModelMetrics() {
+  return {
+    ...metrics,
+    modelPath: onnxModelPath,
+    modelExists: fs.existsSync(onnxModelPath),
+    runtimeAvailable: Boolean(ort),
+  };
+}
+
+module.exports = { predictPriority, detectSentiment, extractTags, getModelHealth, getModelMetrics };
+async function explainPrediction(title, description, customerTier) {
+  const text = (title + ' ' + (description || '')).toLowerCase();
+  const sentiment = detectSentiment(description);
+  const heuristic = buildFallbackPrediction(text, customerTier, sentiment);
+
+  // Attempt to read metadata
+  const metaPath = path.join(__dirname, '..', 'models', 'priority_model.meta.json');
+  let meta = null;
+  try {
+    if (fs.existsSync(metaPath)) {
+      meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    }
+  } catch (e) { meta = null; }
+
+  const features = {
+    sentiment_score: sentiment === 'Angry' ? 1.0 : sentiment === 'Happy' ? -1.0 : 0.0,
+    is_enterprise: /enterprise/.test((customerTier || '').toLowerCase()) ? 1.0 : 0.0,
+    has_critical: ['crash', 'data loss', 'payment', 'security'].some(k => text.includes(k)) ? 1.0 : 0.0,
+    desc_len: parseFloat(text.length || 0),
+  };
+
+  let contributions = [];
+  if (meta && Array.isArray(meta.importances)) {
+    const totalImp = meta.importances.reduce((a, b) => a + b, 0) || 1;
+    const names = meta.feature_names || Object.keys(features);
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      const imp = meta.importances[i] || 0;
+      const val = features[name] || 0;
+      contributions.push({ feature: name, importance: imp, value: val, score: imp * val / totalImp });
+    }
+    contributions.sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+  }
+
+  return {
+    input: { title, description, customerTier },
+    sentiment,
+    heuristic,
+    features,
+    contributions,
+  };
+}
+
+module.exports = { predictPriority, detectSentiment, extractTags, getModelHealth, getModelMetrics, explainPrediction };

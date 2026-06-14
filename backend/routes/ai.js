@@ -4,10 +4,13 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 const Ticket = require('../models/Ticket');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { getModelHealth } = require('../utils/mlPredict');
+const { getModelHealth, getModelMetrics } = require('../utils/mlPredict');
+const { runRetrain } = require('../utils/retrain');
+const { explainPrediction } = require('../utils/mlPredict');
 const { aiLimiter } = require('../middleware/rateLimiters');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const AIConversation = require('../models/AIConversation');
 
 function normalizeText(value, maxLen) {
   return String(value || '').trim().slice(0, maxLen);
@@ -21,6 +24,53 @@ router.get('/model-health', auth, authorize('admin', 'manager'), aiLimiter, asyn
   } catch (err) {
     return next(err);
   }
+});
+
+// GET /api/ai/model-metrics
+router.get('/model-metrics', auth, authorize('admin', 'manager'), aiLimiter, async (req, res, next) => {
+  try {
+    const metrics = getModelMetrics();
+    return res.json({ success: true, data: metrics });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /api/ai/retrain - trigger retraining (admin only)
+router.post('/retrain', auth, authorize('admin'), aiLimiter, async (req, res, next) => {
+  try {
+    if (process.env.ENABLE_AUTO_RETRAIN !== 'true' && process.env.ALLOW_MANUAL_RETRAIN !== 'true') {
+      return res.status(403).json({ success: false, message: 'Retraining disabled in server config' });
+    }
+    const result = await runRetrain();
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /api/ai/explain — return explainability info for a ticket
+router.post('/explain', auth, authorize('admin', 'manager'), aiLimiter, async (req, res, next) => {
+  try {
+    const title = String(req.body?.title || '').slice(0, 500);
+    const description = String(req.body?.description || '').slice(0, 4000);
+    if (!title) return res.status(400).json({ success: false, message: 'title is required' });
+    const explanation = await explainPrediction(title, description, req.body?.customerTier || '');
+    return res.json({ success: true, data: explanation });
+  } catch (err) { next(err); }
+});
+
+// GET /api/ai/conversation — fetch recent conversation for user (self) or admin for any user
+router.get('/conversation/:userId?', auth, aiLimiter, async (req, res, next) => {
+  try {
+    const targetUser = req.params.userId || (req.user && req.user._id);
+    if (!targetUser) return res.status(400).json({ success: false, message: 'userId required' });
+    if (String(targetUser) !== String(req.user?._id) && !['admin','manager'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    const conv = await AIConversation.findOne({ userId: targetUser }).lean();
+    return res.json({ success: true, data: conv || { messages: [] } });
+  } catch (err) { next(err); }
 });
 
 // POST /api/ai/chat
@@ -117,6 +167,21 @@ ${statsContext}${ticketContext}`;
     const userMessageWithContext = `${systemPrompt}\n\nUser query: ${message}`;
     const result = await chat.sendMessage(userMessageWithContext);
     const response = result.response.text();
+
+    // Persist conversation if enabled
+    try {
+      if (process.env.SAVE_CHAT_HISTORY === 'true' && req.user && req.user._id) {
+        const conv = await AIConversation.findOneAndUpdate(
+          { userId: req.user._id },
+          { $push: { messages: { role: 'user', content: message } } , $set: { updatedAt: new Date() } },
+          { upsert: true, new: true }
+        );
+        // push assistant reply
+        conv.messages.push({ role: 'assistant', content: response });
+        conv.updatedAt = new Date();
+        await conv.save();
+      }
+    } catch (e) { console.warn('Saving chat history failed:', e && e.message); }
 
     res.json({
       success: true,

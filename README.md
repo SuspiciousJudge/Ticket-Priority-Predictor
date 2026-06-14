@@ -134,6 +134,41 @@ npm run dev
 
 Frontend default: http://localhost:5173
 
+## Development Quickstart
+
+Follow these steps for a local development environment and quick testing using seeded accounts.
+
+- **Backend (dev)**: start the backend dev server (it may fallback to the next free port if 5000 is busy):
+
+```bash
+cd backend
+npm run dev
+```
+
+- **Frontend (dev)**: start the Vite dev server (Vite will pick the next free port if 5173 is busy):
+
+```bash
+npm run dev
+```
+
+- **Seed the database** (creates admin and agent accounts used for local testing):
+
+```bash
+cd backend
+npm run seed
+```
+
+Seeded test accounts (development only):
+
+- Admin: admin@example.com / Admin1234
+- Admin (alternate): admin@gmail.com / Admin1234
+- Agent: alice@example.com / Password1
+- Agent: bob@example.com / Password1
+
+Notes:
+- These credentials are intended for local/dev use only. Change passwords before any public or production deployment.
+- If the backend starts on a non-default port (e.g. 5001) the frontend dev server proxy may need updating or requests will be routed to that port automatically when configured via `CLIENT_URL`.
+
 ## Scripts
 
 ### Root scripts
@@ -198,6 +233,10 @@ This enables dashboard/list updates without full page refreshes.
 ## Security and Reliability
 
 - JWT-protected routes for sensitive operations
+
+## Recent additions
+
+See [docs/FEATURES.md](docs/FEATURES.md) for a summary of new endpoints and operational features (model metrics, retraining, explainability, exports/imports, alerts, caching, audit logs, tests & CI).
 - CORS allowlist and credentials handling
 - Helmet security headers
 - Request rate limiting

@@ -36,7 +36,7 @@ function setupConnectionListeners() {
 }
 
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ticketpro';
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/ticketpro';
   const maxRetries = Number(process.env.MONGODB_CONNECT_RETRIES || 5);
   const baseDelayMs = Number(process.env.MONGODB_CONNECT_RETRY_DELAY_MS || 2000);
 
@@ -51,7 +51,8 @@ const connectDB = async () => {
       console.error(`MongoDB connection error (attempt ${attempt}/${maxRetries}):`, err.message);
 
       if (isLastAttempt) {
-        process.exit(1);
+        console.error('MongoDB connection failed after all retries; continuing in degraded mode.');
+        return null;
       }
 
       const waitMs = baseDelayMs * attempt;

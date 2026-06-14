@@ -39,3 +39,14 @@ out_path = os.path.join(out_dir, 'priority_model.onnx')
 print("Saving ONNX model to", out_path)
 with open(out_path, "wb") as f:
     f.write(onnx_model.SerializeToString())
+
+# Save simple metadata (feature names and importances) for explainability
+meta = {
+    'feature_names': ['sentiment_score', 'is_enterprise', 'has_critical', 'desc_len'],
+    'importances': model.feature_importances_.tolist()
+}
+import json
+meta_path = os.path.join(out_dir, 'priority_model.meta.json')
+with open(meta_path, 'w') as mf:
+    json.dump(meta, mf)
+print('Saved model metadata to', meta_path)
