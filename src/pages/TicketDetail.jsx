@@ -11,6 +11,7 @@ import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import { ticketsAPI, aiAPI } from '../services/api';
 import { formatDate, formatRelativeTime, cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import ContributionBar from '../components/common/ContributionBar';
 
 const toolMap = [
     { key: 'jira', label: 'Jira', href: 'https://jira.company.example', keywords: ['jira', 'bug', 'sprint', 'story'] },
@@ -606,21 +607,31 @@ export default function TicketDetail() {
                         <div>
                             <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{explainData?.heuristic?.reasoning || (explainData?.contributions?.length ? 'Model feature contributions and heuristic reasoning below.' : 'No explanation available.')}</p>
                             <div className="space-y-3">
-                                {explainData?.contributions && explainData.contributions.length > 0 ? explainData.contributions.map((c, i) => (
-                                    <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{c.feature}</p>
-                                            <span className="text-xs text-gray-500">importance: {c.importance}</span>
+                                {explainData?.contributions && explainData.contributions.length > 0 ? (() => {
+                                    const maxImp = Math.max(...explainData.contributions.map(x => Math.abs(x.importance || 0)), 1);
+                                    return explainData.contributions.map((c, i) => (
+                                        <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border">
+                                            <ContributionBar feature={c.feature} importance={c.importance} value={c.value} maxImportance={maxImp} />
                                         </div>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">value: {String(c.value)}</p>
-                                    </div>
-                                )) : (
+                                    ));
+                                })() : (
                                     <p className="text-sm text-gray-500">No feature contributions available.</p>
                                 )}
                             </div>
-                            <div className="pt-4">
-                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Heuristic Summary</h4>
-                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{explainData?.heuristic?.reasoning}</p>
+                            <div className="pt-4 flex items-start justify-between">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Heuristic Summary</h4>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{explainData?.heuristic?.reasoning}</p>
+                                </div>
+                                <div className="ml-4">
+                                    <Button size="sm" variant="ghost" onClick={() => {
+                                        try {
+                                            const text = `Priority explanation for: ${ticket.title}\n\nHeuristic: ${explainData?.heuristic?.reasoning || 'N/A'}\n\nContributions:\n${(explainData?.contributions || []).map(c => `${c.feature}: importance=${c.importance}, value=${c.value}`).join('\n')}`;
+                                            navigator.clipboard.writeText(text);
+                                            toast.success('Explanation copied to clipboard');
+                                        } catch (e) { toast.error('Copy failed'); }
+                                    }}>Copy</Button>
+                                </div>
                             </div>
                         </div>
                     ) : (
