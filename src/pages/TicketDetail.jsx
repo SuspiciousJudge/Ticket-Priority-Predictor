@@ -32,6 +32,9 @@ export default function TicketDetail() {
     const [editForm, setEditForm] = useState({});
     const [commentText, setCommentText] = useState('');
     const [replyTone, setReplyTone] = useState('professional');
+    const [explainOpen, setExplainOpen] = useState(false);
+    const [explainData, setExplainData] = useState(null);
+    const [explainLoading, setExplainLoading] = useState(false);
     const [warRoomChecklist, setWarRoomChecklist] = useState({
         incidentCommander: false,
         stakeholderUpdate: false,
@@ -553,6 +556,23 @@ export default function TicketDetail() {
                                     <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">Predicted Priority</label>
                                     <Badge type="priority" value={ticket.aiPredictions.predictedPriority}>{ticket.aiPredictions.predictedPriority}</Badge>
                                 </div>
+                                <div className="mt-3">
+                                    <Button size="sm" variant="outline" onClick={async () => {
+                                        try {
+                                            setExplainLoading(true);
+                                            const res = await aiAPI.explain(ticket.title, ticket.description, ticket.customerTier);
+                                            setExplainData(res.data.data);
+                                            setExplainOpen(true);
+                                        } catch (e) {
+                                            console.error('Explain fetch failed', e);
+                                            toast.error('Failed to fetch explanation');
+                                        } finally {
+                                            setExplainLoading(false);
+                                        }
+                                    }} loading={explainLoading}>
+                                        Explain
+                                    </Button>
+                                </div>
                             </div>
                         </Card>
                     )}
@@ -577,6 +597,35 @@ export default function TicketDetail() {
                             {deleteMutation.isPending ? 'Deleting...' : 'Delete Ticket'}
                         </Button>
                     </div>
+                </div>
+            </Modal>
+            {/* Explainability Modal */}
+            <Modal isOpen={explainOpen} onClose={() => setExplainOpen(false)} title="Priority Explanation" size="md">
+                <div className="space-y-4">
+                    {explainData ? (
+                        <div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{explainData?.heuristic?.reasoning || (explainData?.contributions?.length ? 'Model feature contributions and heuristic reasoning below.' : 'No explanation available.')}</p>
+                            <div className="space-y-3">
+                                {explainData?.contributions && explainData.contributions.length > 0 ? explainData.contributions.map((c, i) => (
+                                    <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{c.feature}</p>
+                                            <span className="text-xs text-gray-500">importance: {c.importance}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">value: {String(c.value)}</p>
+                                    </div>
+                                )) : (
+                                    <p className="text-sm text-gray-500">No feature contributions available.</p>
+                                )}
+                            </div>
+                            <div className="pt-4">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Heuristic Summary</h4>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{explainData?.heuristic?.reasoning}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500">Loading explanation...</p>
+                    )}
                 </div>
             </Modal>
         </div>

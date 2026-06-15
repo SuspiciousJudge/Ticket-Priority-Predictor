@@ -104,6 +104,7 @@ export const aiAPI = {
   draftReply: (ticketTitle, ticketDescription, tone = 'professional') =>
     api.post('/ai/draft-reply', { ticketTitle, ticketDescription, tone }),
   modelHealth: () => api.get('/ai/model-health'),
+  explain: (title, description, customerTier = '') => api.post('/ai/explain', { title, description, customerTier }),
 };
 
 export default api;
