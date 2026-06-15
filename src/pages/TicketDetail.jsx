@@ -605,12 +605,30 @@ export default function TicketDetail() {
                 <div className="space-y-4">
                     {explainData ? (
                         <div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{explainData?.heuristic?.reasoning || (explainData?.contributions?.length ? 'Model feature contributions and heuristic reasoning below.' : 'No explanation available.')}</p>
+                            <div className="rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-surface p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Predicted Priority</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge type="priority" value={explainData?.heuristic?.priority || ticket.aiPredictions.predictedPriority}>{explainData?.heuristic?.priority || ticket.aiPredictions.predictedPriority}</Badge>
+                                            <span className="text-sm text-gray-600 dark:text-gray-300">Confidence {ticket.aiPredictions.confidence || 0}%</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Signal source</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">Hybrid model + heuristics</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-border p-4">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Why this priority?</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{explainData?.heuristic?.reasoning || 'Explanation generated from model features and fallback heuristics.'}</p>
+                            </div>
                             <div className="space-y-3">
-                                {explainData?.contributions && explainData.contributions.length > 0 ? (() => {
+                                {(explainData?.contributions && explainData.contributions.length > 0) ? (() => {
                                     const maxImp = Math.max(...explainData.contributions.map(x => Math.abs(x.importance || 0)), 1);
-                                    return explainData.contributions.map((c, i) => (
-                                        <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border">
+                                    return explainData.contributions.slice(0, 5).map((c, i) => (
+                                        <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-surface">
                                             <ContributionBar feature={c.feature} importance={c.importance} value={c.value} maxImportance={maxImp} />
                                         </div>
                                     ));
@@ -618,20 +636,18 @@ export default function TicketDetail() {
                                     <p className="text-sm text-gray-500">No feature contributions available.</p>
                                 )}
                             </div>
-                            <div className="pt-4 flex items-start justify-between">
+                            <div className="pt-4 border-t border-gray-200 dark:border-dark-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Heuristic Summary</h4>
                                     <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{explainData?.heuristic?.reasoning}</p>
                                 </div>
-                                <div className="ml-4">
-                                    <Button size="sm" variant="ghost" onClick={() => {
-                                        try {
-                                            const text = `Priority explanation for: ${ticket.title}\n\nHeuristic: ${explainData?.heuristic?.reasoning || 'N/A'}\n\nContributions:\n${(explainData?.contributions || []).map(c => `${c.feature}: importance=${c.importance}, value=${c.value}`).join('\n')}`;
-                                            navigator.clipboard.writeText(text);
-                                            toast.success('Explanation copied to clipboard');
-                                        } catch (e) { toast.error('Copy failed'); }
-                                    }}>Copy</Button>
-                                </div>
+                                <Button size="sm" variant="ghost" onClick={() => {
+                                    try {
+                                        const text = `Priority explanation for: ${ticket.title}\n\nHeuristic: ${explainData?.heuristic?.reasoning || 'N/A'}\n\nContributions:\n${(explainData?.contributions || []).map(c => `${c.feature}: importance=${c.importance}, value=${c.value}`).join('\n')}`;
+                                        navigator.clipboard.writeText(text);
+                                        toast.success('Explanation copied to clipboard');
+                                    } catch (e) { toast.error('Copy failed'); }
+                                }}>Copy</Button>
                             </div>
                         </div>
                     ) : (
