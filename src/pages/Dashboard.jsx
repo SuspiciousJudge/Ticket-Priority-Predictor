@@ -2,6 +2,7 @@ import { Inbox, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import StatCard from '../components/dashboard/StatCard';
+import Badge from '../components/common/Badge';
 import PriorityChart from '../components/dashboard/PriorityChart';
 import RecentTicketsTable from '../components/dashboard/RecentTicketsTable';
 import ActivityTimeline from '../components/dashboard/ActivityTimeline';

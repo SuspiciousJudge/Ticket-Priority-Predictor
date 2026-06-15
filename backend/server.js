@@ -179,6 +179,10 @@ function startServer(port) {
 
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
+        if (process.env.STRICT_PORT === 'true') {
+          console.error(`Port ${port} is busy and STRICT_PORT=true — exiting.`);
+          process.exit(1);
+        }
         const nextPort = port + 1;
         console.warn(`Port ${port} is busy, trying ${nextPort}...`);
         try {
@@ -193,6 +197,10 @@ function startServer(port) {
     return server;
   } catch (err) {
     if (err && err.code === 'EADDRINUSE') {
+      if (process.env.STRICT_PORT === 'true') {
+        console.error(`Port ${port} is busy and STRICT_PORT=true — exiting.`);
+        process.exit(1);
+      }
       const nextPort = port + 1;
       console.warn(`Port ${port} is busy, trying ${nextPort}...`);
       return startServer(nextPort);
