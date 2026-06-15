@@ -217,6 +217,49 @@ exports.getAll = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.semanticSearch = async (req, res, next) => {
+  try {
+    const queryText = String(req.body?.query || '').trim();
+    if (!queryText) {
+      return res.status(400).json({ success: false, message: 'Search query is required' });
+    }
+
+    const base = { ...buildTicketScope(req.user) };
+    const tickets = await Ticket.find(
+      { ...base, $text: { $search: queryText } },
+      { score: { $meta: 'textScore' } }
+    )
+      .sort({ score: { $meta: 'textScore' }, updatedAt: -1 })
+      .limit(40)
+      .populate('assignee', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('team', 'name color initials')
+      .lean();
+
+    return res.json({ success: true, data: { tickets } });
+  } catch (err) {
+    if (String(err.message).includes('text index')) {
+      const q = escapeRegExp(queryText);
+      const tickets = await Ticket.find({
+        ...buildTicketScope(req.user),
+        $or: [
+          { title: new RegExp(q, 'i') },
+          { description: new RegExp(q, 'i') },
+          { ticketId: new RegExp(q, 'i') },
+        ],
+      })
+        .sort({ updatedAt: -1 })
+        .limit(40)
+        .populate('assignee', 'name email')
+        .populate('createdBy', 'name email')
+        .populate('team', 'name color initials')
+        .lean();
+      return res.json({ success: true, data: { tickets } });
+    }
+    next(err);
+  }
+};
+
 exports.getById = async (req, res, next) => {
   try {
     if (!isValidObjectId(req.params.id)) {
@@ -350,7 +393,7 @@ exports.create = async (req, res, next) => {
       if ((ticket.priority === 'Critical' || ticket.aiPredictions?.priority === 'Critical') && (ticket.aiPredictions?.confidence || ticket.confidence || 0) >= 75) {
         sendAlert({ title: ticket.title, description: ticket.description, priority: ticket.priority, confidence: ticket.aiPredictions?.confidence || ticket.confidence || 0 });
       }
-    } catch (e) { /* ignore notification errors */ }
+    } catch { /* ignore notification errors */ }
   } catch (err) { next(err); }
 };
 
@@ -387,6 +430,15 @@ exports.update = async (req, res, next) => {
         to: req.body.priority,
         reason: req.body.priorityChangeReason || 'Manual override',
         overriddenBy: req.user ? req.user._id : null,
+      });
+    }
+
+    if (req.body.predictionFeedback && typeof req.body.predictionFeedback === 'object') {
+      ticket.modelFeedback = ticket.modelFeedback || [];
+      ticket.modelFeedback.push({
+        correct: Boolean(req.body.predictionFeedback.correct),
+        comment: String(req.body.predictionFeedback.comment || '').trim(),
+        user: req.user ? req.user._id : null,
       });
     }
 

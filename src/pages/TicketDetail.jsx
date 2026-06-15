@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle, Sparkles, Siren, FileWarning, Bot } from 'lucide-react';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
@@ -33,6 +33,10 @@ export default function TicketDetail() {
     const [editForm, setEditForm] = useState({});
     const [commentText, setCommentText] = useState('');
     const [replyTone, setReplyTone] = useState('professional');
+    const [replyLength, setReplyLength] = useState('standard');
+    const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+    const [undoPayload, setUndoPayload] = useState(null);
+    const [offlineDraftSaved, setOfflineDraftSaved] = useState(false);
     const [explainOpen, setExplainOpen] = useState(false);
     const [explainData, setExplainData] = useState(null);
     const [explainLoading, setExplainLoading] = useState(false);
@@ -75,12 +79,13 @@ export default function TicketDetail() {
     // Update mutation (for status/priority/assignee changes)
     const updateMutation = useMutation({
         mutationFn: (data) => ticketsAPI.update(id, data),
-        onSuccess: (res) => {
+        onSuccess: (res, variables) => {
             queryClient.setQueryData(['ticket', id], res.data.data);
             queryClient.invalidateQueries({ queryKey: ['tickets'] });
             queryClient.invalidateQueries({ queryKey: ['stats'] });
             toast.success('Ticket updated');
             setEditing(false);
+            setUndoPayload({ previous: variables, ticketId: id });
         },
         onError: () => toast.error('Failed to update ticket'),
     });
@@ -97,7 +102,7 @@ export default function TicketDetail() {
     });
 
     const draftReplyMutation = useMutation({
-        mutationFn: () => aiAPI.draftReply(ticket?.title, ticket?.description, replyTone),
+        mutationFn: () => aiAPI.draftReply(ticket?.title, ticket?.description, replyTone, replyLength),
         onSuccess: (res) => {
             const draft = res?.data?.data?.draft;
             if (draft) {
@@ -121,7 +126,20 @@ export default function TicketDetail() {
     };
 
     const handleSaveEdit = () => {
+        setUndoPayload({
+            revert: { priority: ticket.priority, status: ticket.status },
+            label: 'Undo last update',
+        });
         updateMutation.mutate(editForm);
+    };
+
+    const handleUndo = () => {
+        if (!undoPayload) return;
+        updateMutation.mutate({
+            ...undoPayload.revert,
+            priorityChangeReason: 'Undo last ticket update',
+        });
+        setUndoPayload(null);
     };
 
     const handleDelete = () => {
@@ -134,6 +152,38 @@ export default function TicketDetail() {
         if (!commentText.trim()) return;
         commentMutation.mutate(commentText.trim());
     };
+
+    useEffect(() => {
+        const draftKey = `ticket-draft-${id}`;
+        const saved = localStorage.getItem(draftKey);
+        if (saved && !commentText) {
+            setCommentText(saved);
+            setOfflineDraftSaved(true);
+        }
+        setFeedbackSubmitted(false);
+        setUndoPayload(null);
+
+        const onOnline = () => {
+            const pending = localStorage.getItem(draftKey);
+            if (pending && pending.trim() && navigator.onLine && !commentMutation.isLoading) {
+                commentMutation.mutate(pending.trim());
+            }
+        };
+
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [id, commentMutation, commentText]);
+
+    useEffect(() => {
+        const draftKey = `ticket-draft-${id}`;
+        if (commentText.trim()) {
+            localStorage.setItem(draftKey, commentText);
+            setOfflineDraftSaved(true);
+        } else {
+            localStorage.removeItem(draftKey);
+            setOfflineDraftSaved(false);
+        }
+    }, [commentText, id]);
 
     // Loading state
     if (isLoading) {
@@ -354,8 +404,8 @@ export default function TicketDetail() {
                         )}
 
                         {/* Add Comment Form */}
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-2">
+                        <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <select
                                     value={replyTone}
                                     onChange={(e) => setReplyTone(e.target.value)}
@@ -365,29 +415,41 @@ export default function TicketDetail() {
                                     <option value="concise">Concise</option>
                                     <option value="reassuring">Reassuring</option>
                                 </select>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={draftReplyMutation.isPending ? undefined : Bot}
-                                    loading={draftReplyMutation.isPending}
-                                    onClick={() => draftReplyMutation.mutate()}
+                                <select
+                                    value={replyLength}
+                                    onChange={(e) => setReplyLength(e.target.value)}
+                                    className="px-2.5 py-1.5 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-xs"
                                 >
-                                    Draft Reply
-                                </Button>
+                                    <option value="brief">Brief</option>
+                                    <option value="standard">Standard</option>
+                                    <option value="detailed">Detailed</option>
+                                </select>
                             </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                icon={draftReplyMutation.isPending ? undefined : Bot}
+                                loading={draftReplyMutation.isPending}
+                                onClick={() => draftReplyMutation.mutate()}
+                            >
+                                Draft Reply
+                            </Button>
                         </div>
 
-                        <form onSubmit={handleAddComment} className="flex items-start space-x-3">
+                        <form onSubmit={handleAddComment} className="flex flex-col gap-3">
                             <textarea
                                 value={commentText}
                                 onChange={(e) => setCommentText(e.target.value)}
                                 placeholder="Add a comment..."
-                                rows={2}
-                                className="flex-1 px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm"
+                                rows={3}
+                                className="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm"
                             />
-                            <Button type="submit" icon={commentMutation.isPending ? undefined : Send} loading={commentMutation.isPending} disabled={!commentText.trim()}>
-                                {commentMutation.isPending ? '' : 'Send'}
-                            </Button>
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-xs text-gray-500">{offlineDraftSaved ? 'Draft saved locally. It will sync when you are back online.' : 'Live comment draft saved automatically.'}</p>
+                                <Button type="submit" icon={commentMutation.isPending ? undefined : Send} loading={commentMutation.isPending} disabled={!commentText.trim()}>
+                                    {commentMutation.isPending ? '' : 'Send'}
+                                </Button>
+                            </div>
                         </form>
                     </Card>
                 </div>
@@ -428,6 +490,28 @@ export default function TicketDetail() {
                             </div>
                         </Card>
                     )}
+
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Change & Feedback History</h3>
+                        <div className="space-y-3">
+                            {ticket.priorityOverrideAudit?.length > 0 ? ticket.priorityOverrideAudit.slice(-3).map((entry, idx) => (
+                                <div key={idx} className="rounded-lg border border-gray-200 dark:border-dark-border p-3 bg-white dark:bg-dark-surface">
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Priority changed from {entry.from} to {entry.to}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Reason: {entry.reason || 'Manual override'}</p>
+                                </div>
+                            )) : (
+                                <p className="text-sm text-gray-500">No priority override history yet.</p>
+                            )}
+                            {ticket.modelFeedback?.length > 0 ? ticket.modelFeedback.slice(-2).map((feedback, idx) => (
+                                <div key={`fb-${idx}`} className="rounded-lg border border-gray-200 dark:border-dark-border p-3 bg-white dark:bg-dark-surface">
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Prediction was {feedback.correct ? 'accurate' : 'incorrect'}</p>
+                                    {feedback.comment && <p className="text-xs text-gray-500 dark:text-gray-400">Comment: {feedback.comment}</p>}
+                                </div>
+                            )) : (
+                                <p className="text-sm text-gray-500">No model feedback captured yet.</p>
+                            )}
+                        </div>
+                    </Card>
 
                     <Card className="p-6">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Resolution Playbook</h3>
@@ -557,22 +641,54 @@ export default function TicketDetail() {
                                     <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">Predicted Priority</label>
                                     <Badge type="priority" value={ticket.aiPredictions.predictedPriority}>{ticket.aiPredictions.predictedPriority}</Badge>
                                 </div>
-                                <div className="mt-3">
-                                    <Button size="sm" variant="outline" onClick={async () => {
-                                        try {
-                                            setExplainLoading(true);
-                                            const res = await aiAPI.explain(ticket.title, ticket.description, ticket.customerTier);
-                                            setExplainData(res.data.data);
-                                            setExplainOpen(true);
-                                        } catch (e) {
-                                            console.error('Explain fetch failed', e);
-                                            toast.error('Failed to fetch explanation');
-                                        } finally {
-                                            setExplainLoading(false);
-                                        }
-                                    }} loading={explainLoading}>
-                                        Explain
-                                    </Button>
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button size="sm" variant="outline" onClick={async () => {
+                                            try {
+                                                setExplainLoading(true);
+                                                const res = await aiAPI.explain(ticket.title, ticket.description, ticket.customerTier);
+                                                setExplainData(res.data.data);
+                                                setExplainOpen(true);
+                                            } catch (e) {
+                                                console.error('Explain fetch failed', e);
+                                                toast.error('Failed to fetch explanation');
+                                            } finally {
+                                                setExplainLoading(false);
+                                            }
+                                        }} loading={explainLoading}>
+                                            Explain
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => {
+                                            updateMutation.mutate({ priority: 'Critical', priorityChangeReason: 'One-click escalation' });
+                                            setUndoPayload({ revert: { priority: ticket.priority, status: ticket.status }, label: 'Undo escalation' });
+                                        }}>
+                                            Escalate Now
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button size="sm" variant={feedbackSubmitted ? 'ghost' : 'outline'} onClick={async () => {
+                                            try {
+                                                await ticketsAPI.submitFeedback(id, { correct: true, comment: 'Prediction was accurate' });
+                                                setFeedbackSubmitted(true);
+                                                toast.success('Feedback recorded');
+                                            } catch {
+                                                toast.error('Unable to submit feedback');
+                                            }
+                                        }} disabled={feedbackSubmitted}>
+                                            Prediction was correct
+                                        </Button>
+                                        <Button size="sm" variant={feedbackSubmitted ? 'ghost' : 'outline'} onClick={async () => {
+                                            try {
+                                                await ticketsAPI.submitFeedback(id, { correct: false, comment: 'Prediction was incorrect' });
+                                                setFeedbackSubmitted(true);
+                                                toast.success('Feedback recorded');
+                                            } catch {
+                                                toast.error('Unable to submit feedback');
+                                            }
+                                        }} disabled={feedbackSubmitted}>
+                                            Prediction was wrong
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </Card>
@@ -646,7 +762,7 @@ export default function TicketDetail() {
                                         const text = `Priority explanation for: ${ticket.title}\n\nHeuristic: ${explainData?.heuristic?.reasoning || 'N/A'}\n\nContributions:\n${(explainData?.contributions || []).map(c => `${c.feature}: importance=${c.importance}, value=${c.value}`).join('\n')}`;
                                         navigator.clipboard.writeText(text);
                                         toast.success('Explanation copied to clipboard');
-                                    } catch (e) { toast.error('Copy failed'); }
+                                    } catch { toast.error('Copy failed'); }
                                 }}>Copy</Button>
                             </div>
                         </div>
@@ -655,6 +771,12 @@ export default function TicketDetail() {
                     )}
                 </div>
             </Modal>
+            {undoPayload && (
+                <div className="fixed bottom-6 right-6 z-50 rounded-full bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-lg p-3 flex items-center gap-3">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{undoPayload.label}</span>
+                    <Button size="sm" variant="outline" onClick={handleUndo}>Undo</Button>
+                </div>
+            )}
         </div>
     );
 }
