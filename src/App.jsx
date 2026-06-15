@@ -31,6 +31,7 @@ import ResetPassword from './pages/ResetPassword';
 import Landing from './pages/Landing';
 import Toast from './components/common/Toast';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorOverlay from './components/common/ErrorOverlay';
 import { getStoredToken } from './services/api';
 import { useParams } from 'react-router-dom';
 
@@ -56,6 +57,7 @@ function TicketDetailRoute() {
 function App() {
   return (
     <BrowserRouter>
+      <ErrorOverlay />
       <Toast />
       <Routes>
         <Route path="/" element={<Landing />} />
