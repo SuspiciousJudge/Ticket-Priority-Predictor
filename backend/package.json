@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for Ticket Priority Predictor",
   "main": "server.js",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
@@ -35,5 +38,8 @@
     "nodemon": "^3.0.2",
     "jest": "^29.0.0",
     "supertest": "^6.0.0"
+  },
+  "overrides": {
+    "qs": "6.16.0"
   }
 }

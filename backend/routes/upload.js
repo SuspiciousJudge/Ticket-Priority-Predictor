@@ -50,8 +50,25 @@ const upload = multer({
   fileFilter,
 });
 
+function requirePersistentStorage(req, res, next) {
+  const cloudinaryConfigured = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME
+    && process.env.CLOUDINARY_API_KEY
+    && process.env.CLOUDINARY_API_SECRET
+  );
+
+  if (process.env.NODE_ENV === 'production' && !cloudinaryConfigured) {
+    return res.status(503).json({
+      success: false,
+      message: 'File uploads require configured persistent storage in production',
+    });
+  }
+
+  return next();
+}
+
 // Upload to Cloudinary (if configured) or serve locally
-router.post('/', auth, upload.array('files', 5), async (req, res, next) => {
+router.post('/', auth, requirePersistentStorage, upload.array('files', 5), async (req, res, next) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: 'No files uploaded' });

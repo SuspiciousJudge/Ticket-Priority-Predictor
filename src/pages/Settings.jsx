@@ -62,7 +62,7 @@ export default function Settings() {
     };
 
     // User Profile Data Map
-    const { data: userRes, isLoading } = useQuery({ queryKey: ['me'], queryFn: authAPI.getMe });
+    const { data: userRes } = useQuery({ queryKey: ['me'], queryFn: authAPI.getMe });
     const user = userRes?.data?.data;
     const [profileForm, setProfileForm] = useState({ name: '', email: '', role: '', avatar: '' });
 

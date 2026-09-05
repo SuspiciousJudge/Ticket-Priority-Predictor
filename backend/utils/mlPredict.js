@@ -38,7 +38,9 @@ async function loadModel() {
         const st = fs.statSync(onnxModelPath);
         metrics.modelFileMtime = st.mtime.toISOString();
         metrics.modelSizeBytes = st.size;
-      } catch {}
+      } catch (error) {
+        console.warn('Failed to read ONNX model metadata:', error.message);
+      }
     } catch (e) {
       metrics.lastModelLoadError = e.message;
       console.warn("Failed to load ONNX model:", e.message);
@@ -257,14 +259,18 @@ async function predictPriority(title, description, customerTier) {
       if (resultObj.priority === 'Critical' && (resultObj.confidence || 0) >= 80) {
         sendAlert({ title, description: description || '', priority: resultObj.priority, confidence: resultObj.confidence });
       }
-    } catch (e) { /* swallow notification errors */ }
+    } catch (error) { console.warn('Priority alert failed:', error.message); }
 
     return resultObj;
 
   } catch (err) {
     metrics.predictionErrors += 1;
     console.error("ONNX inference failed:", err);
-    try { sendAlert({ title, description: description || '', priority: 'InternalError', confidence: 0, extra: `ONNX error: ${err && err.message}` }); } catch (e) {}
+    try {
+      sendAlert({ title, description: description || '', priority: 'InternalError', confidence: 0, extra: `ONNX error: ${err && err.message}` });
+    } catch (error) {
+      console.warn('Model failure alert failed:', error.message);
+    }
     const fallback = buildFallbackPrediction(text, customerTier, sentiment);
     return {
       ...fallback,
@@ -310,7 +316,10 @@ async function explainPrediction(title, description, customerTier) {
     if (fs.existsSync(metaPath)) {
       meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
     }
-  } catch (e) { meta = null; }
+  } catch (error) {
+    meta = null;
+    console.warn('Failed to parse model metadata:', error.message);
+  }
 
   const features = {
     sentiment_score: sentiment === 'Angry' ? 1.0 : sentiment === 'Happy' ? -1.0 : 0.0,

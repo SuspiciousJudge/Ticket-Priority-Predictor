@@ -1,4 +1,5 @@
 module.exports = function (err, req, res, next) {
+  void next;
   console.error(err);
 
   // Mongoose validation error

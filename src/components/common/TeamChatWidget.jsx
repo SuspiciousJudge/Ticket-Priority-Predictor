@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { X, Send, Users, CircleDot, Image as ImageIcon, AtSign, Paperclip, CheckCheck, User } from 'lucide-react';
 import { usersAPI } from '../../services/api';

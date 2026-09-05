@@ -4,7 +4,6 @@ import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { motion } from 'framer-motion';
 import { Download, TrendingUp, TrendingDown, Ticket, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';

@@ -1,10 +1,10 @@
 ﻿import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
+import { authAPI } from '../services/api';
 
 export default function ResetPassword() {
     const navigate = useNavigate();
@@ -27,12 +27,16 @@ export default function ResetPassword() {
 
     const onSubmit = async (data) => {
         setLoading(true);
-        setTimeout(() => {
+        try {
+            await authAPI.resetPassword(token, { password: data.password });
             setLoading(false);
             setResetSuccess(true);
             toast.success('Password reset successfully!');
             setTimeout(() => navigate('/login'), 2000);
-        }, 1500);
+        } catch (error) {
+            setLoading(false);
+            toast.error(error.message || 'Unable to reset password.');
+        }
     };
 
     if (resetSuccess) {

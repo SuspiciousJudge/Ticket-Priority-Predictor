@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 
 export default function PageTransition({ children }) {

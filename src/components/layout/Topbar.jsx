@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Bell, Menu, Moon, Sun, User, Settings, HelpCircle, LogOut, X, Check, CheckCheck, Inbox, AlertTriangle, MessageCircle, Shield, ChevronDown, MessageSquare } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { cn, formatRelativeTime } from '../../lib/utils';
 import TeamSelector from './TeamSelector';
 import CreateTeamModal from '../common/CreateTeamModal';

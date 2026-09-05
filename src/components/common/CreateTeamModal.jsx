@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Users, Settings2, Eye, Palette } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useStore } from '../../store/useStore';
+import { AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersAPI, teamsAPI } from '../../services/api';
 import { cn } from '../../lib/utils';
@@ -61,7 +60,7 @@ export default function CreateTeamModal({ isOpen, onClose }) {
 
     const createTeamMutation = useMutation({
         mutationFn: (data) => teamsAPI.create(data),
-        onSuccess: (res) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['teams'] });
             toast.success(`Team "${form.name}" created successfully!`);
             reset();

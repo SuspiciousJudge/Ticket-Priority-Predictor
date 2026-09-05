@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { MessageCircle, User, CheckCircle, AlertCircle, Edit } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import Card from '../common/Card';

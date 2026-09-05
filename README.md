@@ -89,11 +89,36 @@ Create backend/.env with the following keys as needed:
 - CLOUDINARY_CLOUD_NAME=optional_if_using_cloud_upload
 - CLOUDINARY_API_KEY=optional_if_using_cloud_upload
 - CLOUDINARY_API_SECRET=optional_if_using_cloud_upload
+- RESET_EMAIL_MODE=console
+- PASSWORD_RESET_URL_BASE=http://localhost:5173/reset-password
+- RESEND_API_KEY=required_for_production_password_reset_email
+- MAIL_FROM=verified_sender@example.com
+- TRUST_PROXY=false
+- ENFORCE_HTTPS=false
+- ENABLE_PUBLIC_UPLOADS=false
+- ENABLE_AUTO_RETRAIN=false
+- ALLOW_MANUAL_RETRAIN=false
+
+For split frontend/backend hosting, configure these frontend build variables:
+
+- VITE_API_BASE_URL=https://your-backend.example.com/api
+- VITE_SOCKET_URL=https://your-backend.example.com
 
 Notes:
 
 - If GEMINI_API_KEY is missing, AI suggest-priority falls back to local predictor.
 - If ONNX runtime/model is unavailable, backend falls back to heuristic scoring.
+- In production, MONGODB_URI and CLIENT_URL are required at startup.
+- In production, uploads require all Cloudinary variables; the backend rejects uploads instead of using ephemeral local storage.
+- Development reset requests use console delivery and may return a local reset URL. Production requires RESET_EMAIL_MODE=resend, RESEND_API_KEY, MAIL_FROM, and PASSWORD_RESET_URL_BASE.
+- Automatic retraining is disabled by default because the training worker requires a separate Python/job environment.
+
+## Runtime Requirements
+
+- Node.js 22.12.0 or later within the Node 22 release line. See `.nvmrc`.
+- MongoDB for local development and production persistence.
+- Cloudinary for persistent production attachments.
+- Optional Resend, Gemini, and Slack credentials for their respective features.
 
 ## Setup
 
@@ -133,6 +158,16 @@ npm run dev
 ```
 
 Frontend default: http://localhost:5173
+
+### Docker Compose
+
+Copy `.env.example` to `.env`, replace the placeholder `JWT_SECRET`, then run:
+
+```bash
+docker compose up --build
+```
+
+The Nginx frontend is available at http://localhost:3000 and proxies `/api` and `/socket.io` to the backend. The Compose stack includes MongoDB, backend, frontend, and health checks. Do not use the seed script against a database containing real data.
 
 ## Development Quickstart
 
@@ -233,6 +268,35 @@ This enables dashboard/list updates without full page refreshes.
 ## Security and Reliability
 
 - JWT-protected routes for sensitive operations
+- Password reset tokens are hashed, expire after 30 minutes, and are invalidated after use.
+- Production upload requests require persistent Cloudinary storage.
+- `/api/health` reports database readiness with HTTP 503 when MongoDB is unavailable.
+- Express app construction is separated from server startup so route tests do not open network or database handles.
+
+## Validation
+
+```bash
+npm ci
+npm run lint
+npm run build
+
+cd backend
+npm ci
+npm test -- --detectOpenHandles
+npm run check:model
+node scripts/checkModelHealth.js
+```
+
+Dependency audits are run separately from the root and backend. See [FINAL_PRE_DEPLOYMENT_REPORT.md](FINAL_PRE_DEPLOYMENT_REPORT.md) for the latest evidence, remaining advisory, external-service status, and deployment requirements.
+
+## Project Reports
+
+- [Final pre-deployment report](FINAL_PRE_DEPLOYMENT_REPORT.md)
+- [Production readiness report](PRODUCTION_READINESS_REPORT.md)
+- [Deployment blockers](DEPLOYMENT_BLOCKERS.md)
+- [Deployment guide](DEPLOYMENT_GUIDE.md)
+- [Manual testing checklist](MANUAL_TESTING_CHECKLIST.md)
+- [Project fix report](PROJECT_FIX_REPORT.md)
 
 ## Recent additions
 
@@ -356,10 +420,13 @@ Detailed docs:
 
 - Smart SLA risk prediction for active tickets.
 - Auto-triage queue for unassigned incidents.
+- Natural language semantic ticket search from the knowledge base.
 - Similar ticket resolver with likely fix suggestions.
 - Priority override auditing and analytics.
+- In-app feedback loop that captures prediction corrections and model accuracy responses.
 - Team workload balancing insights.
 - Escalation assistant and incident war-room mode.
+- Offline draft sync for ticket comments and agent updates.
 - Customer impact scoring and explainable prioritization.
 - Resolution playbooks and KB-assisted creation flow.
 - Root-cause timeline and reopen-quality analytics.

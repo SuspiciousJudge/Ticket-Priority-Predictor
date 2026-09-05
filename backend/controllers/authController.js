@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const { sendPasswordResetEmail } = require('../utils/passwordResetDelivery');
 
 const SALT_ROUNDS = process.env.NODE_ENV === 'production' ? 10 : 8;
 
@@ -111,6 +112,10 @@ exports.forgotPassword = async (req, res, next) => {
       return res.status(200).json({ success: true, message: 'If that email exists, we sent reset instructions' });
     }
 
+    if (process.env.NODE_ENV === 'production' && (!process.env.RESEND_API_KEY || !process.env.MAIL_FROM || !process.env.PASSWORD_RESET_URL_BASE)) {
+      return res.status(503).json({ success: false, message: 'Password reset service is not configured' });
+    }
+
     const user = await User.findOne({ email: email.toLowerCase() });
     // Always return success to prevent email enumeration
     if (!user) return res.status(200).json({ success: true, message: 'If that email exists, we sent reset instructions' });
@@ -123,11 +128,21 @@ exports.forgotPassword = async (req, res, next) => {
     user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
     await user.save();
 
-    // In production, email delivery should be used instead of returning token payloads.
-    res.json({
+    let delivery;
+    try {
+      delivery = await sendPasswordResetEmail({ email: user.email, token: resetToken });
+    } catch (deliveryError) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+      throw deliveryError;
+    }
+    const response = {
       success: true,
       message: 'If that email exists, we sent reset instructions',
-    });
+    };
+    if (delivery.development) response.resetUrl = delivery.resetUrl;
+    res.json(response);
   } catch (err) { next(err); }
 };
 
@@ -136,8 +151,11 @@ exports.resetPassword = async (req, res, next) => {
     const { token } = req.params;
     const { password } = req.body;
 
-    if (!password || password.length < 8) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters and contain an uppercase letter and a number',
+      });
     }
 
     // Hash the incoming token and compare with stored hash

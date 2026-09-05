@@ -1,14 +1,15 @@
 ﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
+import { authAPI } from '../services/api';
 
 export default function ForgotPassword() {
     const [loading, setLoading] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
+    const [developmentResetUrl, setDevelopmentResetUrl] = useState('');
 
     const {
         register,
@@ -18,11 +19,18 @@ export default function ForgotPassword() {
 
     const onSubmit = async (data) => {
         setLoading(true);
-        setTimeout(() => {
+        try {
+            const response = await authAPI.forgotPassword({ email: data.email });
+            if (response.data?.resetUrl) {
+                setDevelopmentResetUrl(response.data.resetUrl);
+            }
             setLoading(false);
             setEmailSent(true);
-            toast.success('Password reset link sent to your email!');
-        }, 1500);
+            toast.success('If that email exists, reset instructions were sent.');
+        } catch (error) {
+            setLoading(false);
+            toast.error(error.message || 'Unable to request a password reset.');
+        }
     };
 
     if (emailSent) {
@@ -43,6 +51,15 @@ export default function ForgotPassword() {
                     <p className="text-gray-600 dark:text-gray-400 mb-8">
                         We've sent a password reset link to your email address. Please check your inbox and follow the instructions.
                     </p>
+
+                    {developmentResetUrl && (
+                        <a
+                            href={developmentResetUrl}
+                            className="block mb-6 text-sm text-primary-600 hover:text-primary-700 underline break-all"
+                        >
+                            Open development reset link
+                        </a>
+                    )}
 
                     <Link to="/login">
                         <Button className="w-full">

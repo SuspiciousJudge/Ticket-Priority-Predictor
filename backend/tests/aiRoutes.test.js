@@ -1,5 +1,7 @@
 jest.mock('../middleware/auth', () => (req, res, next) => { req.user = { _id: 'test-user', role: 'admin' }; return next(); });
 jest.mock('../middleware/authorize', () => () => (req, res, next) => next());
+jest.mock('../middleware/dbReady', () => (req, res, next) => next());
+jest.mock('../middleware/audit', () => (req, res, next) => next());
 
 const request = require('supertest');
 
@@ -8,7 +10,7 @@ describe('AI routes', () => {
   beforeAll(() => {
     // Fresh import after mocks
     jest.resetModules();
-    app = require('../server');
+    app = require('../app').app;
   });
 
   test('POST /api/ai/explain returns explanation payload', async () => {

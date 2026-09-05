@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Plus, BarChart3, Users, Settings } from 'lucide-react';
 
 const actions = [
