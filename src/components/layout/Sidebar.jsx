@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useMemo } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import {
     LayoutDashboard,

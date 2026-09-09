@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Plus, BarChart3, Users, Settings } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const actions = [
     { icon: Plus, label: 'Create Ticket', path: '/create', gradient: 'from-primary-500 to-purple-600', description: 'Report a new issue' },

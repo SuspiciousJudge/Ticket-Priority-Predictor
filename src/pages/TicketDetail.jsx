@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Edit, Trash2, Clock, Calendar, User, Send, Save, X, Loader2, MessageSquare, AlertTriangle, Sparkles, Siren, FileWarning, Bot } from 'lucide-react';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';

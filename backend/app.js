@@ -78,6 +78,10 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+app.get('/', (req, res) => {
+  res.json({ service: 'ticket-priority-backend', status: 'ok', health: '/api/health' });
+});
+
 if (process.env.NODE_ENV === 'production' && process.env.ENFORCE_HTTPS === 'true') {
   app.use((req, res, next) => {
     if (req.headers['x-forwarded-proto'] === 'https') return next();

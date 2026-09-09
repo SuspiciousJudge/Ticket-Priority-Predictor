@@ -1,4 +1,5 @@
 import { MessageCircle, User, CheckCircle, AlertCircle, Edit } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import Card from '../common/Card';
 import { formatRelativeTime } from '../../lib/utils';

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
 import { aiAPI } from '../../services/api';
 import { cn } from '../../lib/utils';

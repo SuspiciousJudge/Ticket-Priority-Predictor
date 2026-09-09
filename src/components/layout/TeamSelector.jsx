@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Search, Check, Plus, Settings2 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store/useStore';
 import { useQuery } from '@tanstack/react-query';
 import { teamsAPI } from '../../services/api';
