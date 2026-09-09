@@ -238,22 +238,26 @@ router.post('/draft-reply', auth, aiLimiter, async (req, res, next) => {
     const ticketTitle = normalizeText(req.body?.ticketTitle, 500);
     const ticketDescription = normalizeText(req.body?.ticketDescription, 4000);
     const tone = normalizeText(req.body?.tone || 'professional', 30);
+    const length = normalizeText(req.body?.length || 'standard', 20);
     if (!ticketTitle) {
       return res.status(400).json({ success: false, message: 'ticketTitle is required' });
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      const fallback = `Thanks for reporting this issue. We have reviewed the ticket "${ticketTitle}" and are actively investigating it. Next update will be shared once we complete initial triage.`;
-      return res.json({ success: true, data: { draft: fallback } });
+      const fallbackLength = length === 'brief'
+        ? `Thank you for reporting this issue. We are reviewing it and will update you soon.`
+        : `Thanks for reporting this issue. We have reviewed the ticket "${ticketTitle}" and are actively investigating it. Next update will be shared once we complete initial triage.`;
+      return res.json({ success: true, data: { draft: fallbackLength } });
     }
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `Write a concise customer-facing ticket update in ${tone} tone.
+    const wordLimit = length === 'brief' ? '40 words' : length === 'detailed' ? '120 words' : '80 words';
+    const prompt = `Write a ${length} customer-facing ticket update in ${tone} tone.
 Ticket title: ${ticketTitle}
 Ticket description: ${ticketDescription || 'No description'}
 
 Rules:
-- Keep it under 90 words
+- Keep it under ${wordLimit}
 - Mention current status and next action
 - Do not promise an exact resolution time unless explicitly known
 - Output only the message text`;

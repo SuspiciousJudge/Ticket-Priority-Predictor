@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { aiAPI } from '../services/api';
+import { aiAPI, ticketsAPI } from '../services/api';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
@@ -23,9 +23,15 @@ export default function KnowledgeBase() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(ARTICLES[0]);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
 
   const aiMutation = useMutation({
     mutationFn: (prompt) => aiAPI.chat(prompt, []),
+  });
+
+  const semanticMutation = useMutation({
+    mutationFn: (term) => ticketsAPI.search(term),
+    onSuccess: (res) => setSearchResults(res.data.data.tickets || []),
   });
 
   const filtered = useMemo(() => {
@@ -43,9 +49,25 @@ export default function KnowledgeBase() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="p-4 lg:col-span-1 space-y-3">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search articles..." className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-dark-bg" />
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-            {filtered.map((a) => (
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search articles or tickets..." className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-dark-bg" />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => query.trim() && semanticMutation.mutate(query.trim())}
+              loading={semanticMutation.isPending}
+            >
+              Search Tickets
+            </Button>
+            <span className="text-xs text-gray-500">Use natural language to find tickets and related articles.</span>
+          </div>
+          <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+            {searchResults.length > 0 ? searchResults.map((ticket) => (
+              <button key={ticket._id} type="button" onClick={() => setSelected({ id: ticket._id, category: ticket.category || 'Ticket', title: ticket.title, summary: ticket.description.slice(0, 120), content: `Priority: ${ticket.priority}. ${ticket.description}` })} className={`w-full text-left p-3 rounded-lg border ${selected?.id === ticket._id ? 'bg-primary-50 border-primary-300' : 'bg-white dark:bg-dark-surface'}`}>
+                <p className="text-sm font-semibold">{ticket.title}</p>
+                <p className="text-xs text-gray-500 mt-1">{ticket.category || 'General'} · {ticket.priority}</p>
+              </button>
+            )) : filtered.map((a) => (
               <button key={a.id} onClick={() => setSelected(a)} className={`w-full text-left p-3 rounded-lg border ${selected?.id === a.id ? 'bg-primary-50 border-primary-300' : 'bg-white dark:bg-dark-surface'}`}>
                 <p className="text-sm font-semibold">{a.title}</p>
                 <p className="text-xs text-gray-500 mt-1">{a.category}</p>

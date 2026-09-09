@@ -30,3 +30,13 @@ backend/.env.*
 *.njsproj
 *.sln
 *.sw?
+
+# Local assistant/tooling state and generated project reports
+.agents/
+.claude/
+skills-lock.json
+ta
+lint-report*.txt
+Project_Report.docx
+architecture.png
+distribution.png

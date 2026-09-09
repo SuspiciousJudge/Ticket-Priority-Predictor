@@ -66,6 +66,8 @@ export const ticketsAPI = {
   addComment: (id, data) => api.post(`/tickets/${id}/comments`, data),
   getStats: (params) => api.get('/tickets/stats', { params }),
   getSimilar: (id) => api.get(`/tickets/${id}/similar`),
+  search: (query) => api.post('/tickets/search', { query }),
+  submitFeedback: (id, feedback) => api.put(`/tickets/${id}`, { predictionFeedback: feedback }),
   exportCsv: () => api.get('/tickets/export-csv', { responseType: 'blob' }),
   exportExecutiveSnapshot: () => api.get('/tickets/executive-snapshot', { responseType: 'blob' }),
 };
@@ -101,8 +103,8 @@ export const aiAPI = {
     api.post('/ai/chat', { message, conversationHistory }),
   suggestPriority: (title, description) =>
     api.post('/ai/suggest-priority', { title, description }),
-  draftReply: (ticketTitle, ticketDescription, tone = 'professional') =>
-    api.post('/ai/draft-reply', { ticketTitle, ticketDescription, tone }),
+  draftReply: (ticketTitle, ticketDescription, tone = 'professional', length = 'standard') =>
+    api.post('/ai/draft-reply', { ticketTitle, ticketDescription, tone, length }),
   modelHealth: () => api.get('/ai/model-health'),
   explain: (title, description, customerTier = '') => api.post('/ai/explain', { title, description, customerTier }),
 };

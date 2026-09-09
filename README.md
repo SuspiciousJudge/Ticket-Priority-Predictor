@@ -48,7 +48,7 @@ This project includes:
 - backend/: backend API, DB, model, scripts
 - public/: static frontend assets
 - dist/: frontend production build output
-- revision.txt: detailed file-by-file architecture notes
+- revision.md: detailed file-by-file architecture notes
 - ai model.txt: detailed ML methodology and model behavior notes
 
 ## API Surface
@@ -350,7 +350,7 @@ Inference inputs (engineered features):
 
 Detailed docs:
 
-- See revision.txt for architecture and file mapping.
+- See revision.md for architecture and file mapping.
 - See ai model.txt for model internals, examples, and limitations.
 
 ## Health Checks

@@ -14,6 +14,7 @@ router.get('/:id', auth, ticketController.getById);
 router.post('/:id/comments', auth, ticketController.addComment);
 router.put('/:id', auth, ticketController.update);
 router.delete('/:id', auth, ticketController.remove);
+router.post('/search', auth, ticketController.semanticSearch);
 
 router.get('/', auth, ticketController.getAll);
 router.post('/', auth, ticketController.create);

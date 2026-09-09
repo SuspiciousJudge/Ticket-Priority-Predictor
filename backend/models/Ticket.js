@@ -38,6 +38,13 @@ const StatusHistorySchema = new mongoose.Schema({
   changedAt: { type: Date, default: Date.now },
 }, { _id: false });
 
+const ModelFeedbackSchema = new mongoose.Schema({
+  correct: { type: Boolean, required: true },
+  comment: String,
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdAt: { type: Date, default: Date.now },
+}, { _id: false });
+
 const TicketSchema = new mongoose.Schema({
   ticketId: { type: String, unique: true },
   title: { type: String, required: true },
@@ -64,6 +71,7 @@ const TicketSchema = new mongoose.Schema({
   impactScore: { type: Number, default: 0 },
   priorityOverrideAudit: [PriorityOverrideSchema],
   statusHistory: [StatusHistorySchema],
+  modelFeedback: [ModelFeedbackSchema],
   reopenCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
